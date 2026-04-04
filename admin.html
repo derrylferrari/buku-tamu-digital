@@ -11,128 +11,294 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
 
   <link rel="stylesheet" href="style.css" />
-
   <style>
-    .admin-card { display: none; }
-
-    .stats-box {
+    .admin-page {
+      position: relative;
+      z-index: 1;
+      min-height: 100vh;
+      padding: 24px;
       display: flex;
-      gap: 12px;
-      flex-wrap: wrap;
-      margin-bottom: 20px;
+      justify-content: center;
+      align-items: flex-start;
     }
 
-    .stat-item {
+    .admin-shell {
+      width: 100%;
+      max-width: 1280px;
+      margin-top: 24px;
+    }
+
+    .admin-card,
+    .login-card {
+      background: rgba(255,255,255,0.94);
+      border-radius: 28px;
+      box-shadow: 0 20px 60px rgba(15, 23, 42, 0.18);
+      backdrop-filter: blur(10px);
+      overflow: hidden;
+    }
+
+    .login-card {
+      max-width: 480px;
+      margin: 48px auto 0;
+      padding: 34px;
+    }
+
+    .login-brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 18px;
+    }
+
+    .login-brand img {
+      width: 60px;
+      height: 60px;
+      object-fit: contain;
       background: white;
-      padding: 12px 16px;
-      border-radius: 12px;
-      font-weight: 600;
+      padding: 6px;
+      border-radius: 14px;
       box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+    }
+
+    .login-brand h1 {
+      margin: 0;
+      font-size: 1.7rem;
+      font-family: "Playfair Display", serif;
+      color: var(--primary-dark);
+    }
+
+    .login-card p {
+      margin: 0 0 24px;
+      color: var(--muted);
+    }
+
+    .admin-card {
+      display: none;
+    }
+
+    .admin-topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 20px 24px;
+      background: linear-gradient(135deg, rgba(30,58,138,0.95), rgba(29,78,216,0.95));
+      color: white;
+    }
+
+    .admin-topbar-left {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .admin-topbar-left img {
+      width: 48px;
+      height: 48px;
+      object-fit: contain;
+      background: rgba(255,255,255,0.95);
+      padding: 5px;
+      border-radius: 12px;
+    }
+
+    .admin-topbar h1 {
+      margin: 0;
+      font-size: 1.35rem;
+    }
+
+    .admin-subtitle {
+      margin: 2px 0 0;
+      font-size: 0.85rem;
+      opacity: 0.88;
+    }
+
+    .admin-actions {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .ghost-btn,
+    .danger-btn {
+      border: 0;
+      border-radius: 12px;
+      padding: 10px 14px;
+      font: inherit;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .ghost-btn {
+      background: white;
+      color: var(--primary-dark);
+    }
+
+    .danger-btn {
+      background: #dc2626;
+      color: white;
+    }
+
+    .admin-content {
+      padding: 24px;
     }
 
     .toolbar {
       display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
+      gap: 12px;
       margin-bottom: 20px;
+      flex-wrap: wrap;
     }
 
     .toolbar input {
-      padding: 8px;
-      border-radius: 8px;
-      border: 1px solid #ccc;
+      max-width: 340px;
     }
 
-    .ghost-btn {
-      border: 0;
-      border-radius: 10px;
-      padding: 8px 12px;
-      cursor: pointer;
-      background: #2563eb;
-      color: white;
-      font-weight: 600;
+    .table-wrap {
+      overflow-x: auto;
+      border: 1px solid rgba(203, 213, 225, 0.8);
+      border-radius: 20px;
+      background: rgba(255,255,255,0.95);
     }
 
     table {
       width: 100%;
       border-collapse: collapse;
-      background: white;
+      min-width: 1020px;
+      background: transparent;
+    }
+
+    thead {
+      background: #eff6ff;
     }
 
     th, td {
-      padding: 10px;
-      border-bottom: 1px solid #ddd;
+      padding: 14px 12px;
+      text-align: left;
+      border-bottom: 1px solid #e5e7eb;
+      vertical-align: top;
+      font-size: 0.95rem;
     }
 
     th {
-      background: #f1f5f9;
+      color: var(--primary-dark);
+      font-weight: 700;
+    }
+
+    .empty-state {
+      padding: 28px;
+      text-align: center;
+      color: var(--muted);
+    }
+
+    .small-btn {
+      border: 0;
+      border-radius: 10px;
+      padding: 8px 10px;
+      font: inherit;
+      font-weight: 600;
+      cursor: pointer;
+      background: #ef4444;
+      color: white;
+    }
+
+    #adminMessage {
+      margin-top: 16px;
+    }
+
+    @media (max-width: 900px) {
+      .admin-topbar {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 14px;
+      }
     }
   </style>
 </head>
+<body class="admin-body">
+  <div class="page-bg"></div>
+  <div class="page-overlay"></div>
 
-<body>
+  <main class="admin-page">
+    <div class="admin-shell">
+      <section id="loginCard" class="login-card">
+        <div class="login-brand">
+          <img src="assets/img/logo.png" alt="Logo Instansi">
+          <div>
+            <h1>Login Admin</h1>
+          </div>
+        </div>
 
-<main>
-  <!-- LOGIN -->
-  <section id="loginCard">
-    <h2>Login Admin</h2>
+        <p>Masuk untuk mengakses dashboard buku tamu digital.</p>
 
-    <form id="loginForm">
-      <input type="email" id="adminEmail" placeholder="Email" required><br><br>
-      <input type="password" id="adminPassword" placeholder="Password" required><br><br>
-      <button type="submit">Login</button>
-    </form>
+        <form id="loginForm">
+          <div class="form-group">
+            <label for="adminEmail">Email</label>
+            <input type="email" id="adminEmail" placeholder="Masukkan email admin" required />
+          </div>
 
-    <p id="loginMessage"></p>
-  </section>
+          <div class="form-group" style="margin-top:16px;">
+            <label for="adminPassword">Password</label>
+            <input type="password" id="adminPassword" placeholder="Masukkan password" required />
+          </div>
 
-  <!-- DASHBOARD -->
-  <section id="adminCard" class="admin-card">
+          <button type="submit" id="loginBtn" class="submit-btn">Login</button>
+          <p id="loginMessage" class="form-message" aria-live="polite"></p>
+        </form>
+      </section>
 
-    <h2>Dashboard Admin</h2>
+      <section id="adminCard" class="admin-card">
+        <div class="admin-topbar">
+          <div class="admin-topbar-left">
+            <img src="assets/img/logo.png" alt="Logo Instansi">
+            <div>
+              <h1>Admin Buku Tamu Digital</h1>
+              <p class="admin-subtitle">Kantor Pengelolaan Data dan Arsip Digital</p>
+            </div>
+          </div>
 
-    <button id="logoutBtn" class="ghost-btn">Logout</button>
+          <div class="admin-actions">
+            <span id="adminEmailLabel"></span>
+            <button id="logoutBtn" class="ghost-btn">Logout</button>
+          </div>
+        </div>
 
-    <!-- 📊 STATISTIK -->
-    <div id="stats" class="stats-box"></div>
+        <div class="admin-content">
+          <div class="toolbar">
+            <input type="text" id="searchInput" placeholder="Cari nama, instansi, tujuan..." />
+            <button id="refreshBtn" class="ghost-btn">Refresh</button>
+          </div>
 
-    <!-- 🔍 FILTER + AKSI -->
-    <div class="toolbar">
-      <input type="text" id="searchInput" placeholder="Cari...">
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>No</th>
+                  <th>Nama Lengkap</th>
+                  <th>Instansi</th>
+                  <th>No HP</th>
+                  <th>Email</th>
+                  <th>Tujuan / PIC</th>
+                  <th>Keperluan</th>
+                  <th>Tanggal</th>
+                  <th>Dibuat</th>
+                  <th>Aksi</th>
+                </tr>
+              </thead>
+              <tbody id="guestTableBody">
+                <tr>
+                  <td colspan="10" class="empty-state">Memuat data...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
 
-      <input type="date" id="filterTanggal">
-      <input type="text" id="filterInstansi" placeholder="Filter Instansi">
-
-      <button id="filterBtn" class="ghost-btn">Filter</button>
-      <button id="refreshBtn" class="ghost-btn">Refresh</button>
-      <button id="exportBtn" class="ghost-btn">Ekspor Excel</button>
+          <p id="adminMessage" class="form-message" aria-live="polite"></p>
+        </div>
+      </section>
     </div>
+  </main>
 
-    <!-- 📋 TABEL -->
-    <table>
-      <thead>
-        <tr>
-          <th>No</th>
-          <th>Nama</th>
-          <th>Instansi</th>
-          <th>No HP</th>
-          <th>Email</th>
-          <th>Tujuan</th>
-          <th>Keperluan</th>
-          <th>Tanggal</th>
-          <th>Aksi</th>
-        </tr>
-      </thead>
-      <tbody id="guestTableBody">
-        <tr><td colspan="9">Memuat data...</td></tr>
-      </tbody>
-    </table>
-
-  </section>
-</main>
-
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="admin.js"></script>
-
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="admin.js"></script>
 </body>
 </html>
