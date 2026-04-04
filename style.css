@@ -309,3 +309,10 @@ select:focus {
     font-size: 1.75rem;
   }
 }
+
+.toolbar input,
+.toolbar select {
+  padding: 8px;
+  border-radius: 10px;
+  border: 1px solid #ccc;
+}
