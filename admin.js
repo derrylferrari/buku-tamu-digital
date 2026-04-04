@@ -77,7 +77,7 @@ function applySearch() {
   renderTable(filtered);
 }
 
-async function loadGuests() {
+async function loadGuests() loadStats(); {
   resetMessage(adminMessage);
   guestTableBody.innerHTML = `
     <tr>
@@ -238,3 +238,65 @@ supabaseClient.auth.onAuthStateChange((event) => {
 });
 
 checkSession();
+const exportBtn = document.getElementById("exportBtn");
+
+if (exportBtn) {
+  exportBtn.addEventListener("click", async () => {
+    const { data, error } = await supabaseClient
+      .from("tamu")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      alert("Gagal export");
+      return;
+    }
+
+    let csv = "No,Nama,Instansi,No HP,Email,Tujuan,Keperluan,Tanggal\n";
+
+    data.forEach((d, i) => {
+      csv += `${i+1},"${d.nama_lengkap}","${d.instansi}","${d.no_hp}","${d.email}","${d.tujuan}","${d.keperluan}","${d.tanggal_kunjungan}"\n`;
+    });
+
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "data_tamu.csv";
+    a.click();
+  });
+}
+
+const filterBtn = document.getElementById("filterBtn");
+
+if (filterBtn) {
+  filterBtn.addEventListener("click", async () => {
+    let query = supabaseClient.from("tamu").select("*");
+
+    const tanggal = document.getElementById("filterTanggal")?.value;
+    const instansi = document.getElementById("filterInstansi")?.value;
+
+    if (tanggal) query = query.eq("tanggal_kunjungan", tanggal);
+    if (instansi) query = query.ilike("instansi", `%${instansi}%`);
+
+    const { data, error } = await query;
+
+    if (!error) {
+      guestRows = data;
+      renderTable(guestRows);
+    }
+  });
+}
+
+function loadStats() {
+  const total = guestRows.length;
+
+  const today = new Date().toISOString().split("T")[0];
+  const todayCount = guestRows.filter(d => d.tanggal_kunjungan === today).length;
+
+  document.getElementById("stats").innerHTML = `
+    <div>Total: ${total}</div>
+    <div>Hari ini: ${todayCount}</div>
+  `;
+}
