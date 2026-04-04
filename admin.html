@@ -265,6 +265,23 @@
         <div class="admin-content">
           <div class="toolbar">
             <input type="text" id="searchInput" placeholder="Cari nama, instansi, tujuan..." />
+        
+            <input type="date" id="filterTanggal" />
+            <input type="text" id="filterInstansi" placeholder="Filter Instansi" />
+            <input type="text" id="filterTujuan" placeholder="Filter Tujuan / PIC" />
+        
+            <select id="filterKeperluan">
+              <option value="">Semua Keperluan</option>
+              <option value="Audiensi">Audiensi</option>
+              <option value="Koordinasi">Koordinasi</option>
+              <option value="Konsultasi">Konsultasi</option>
+              <option value="Kegiatan Praktikum / Magang">Kegiatan Praktikum / Magang</option>
+              <option value="Peminjaman / Pengembalian Arsip">Peminjaman / Pengembalian Arsip</option>
+              <option value="Pemanfaatan Coworking Space">Pemanfaatan Coworking Space</option>
+              <option value="Silaturahmi">Silaturahmi</option>
+              <option value="Lainnya">Lainnya</option>
+            </select>
+        
             <button id="refreshBtn" class="ghost-btn">Refresh</button>
             <button id="exportBtn" class="ghost-btn">Export Excel</button>
           </div>
