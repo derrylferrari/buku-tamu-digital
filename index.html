@@ -4,22 +4,26 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Buku Tamu Digital</title>
+
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+
   <link rel="stylesheet" href="style.css" />
 </head>
-<body>
+<body class="guest-body">
   <div class="page-bg"></div>
+  <div class="page-overlay"></div>
 
   <main class="container">
-    <section class="card">
-      <div class="left-panel">
+    <section class="card glass-card">
+      <div class="left-panel guest-left">
         <div class="brand">
-          <img src="https://upload.wikimedia.org/wikipedia/id/7/73/Logo_Unpad.svg" alt="Logo Instansi" class="logo">
+          <img src="assets/img/logo.png" alt="Logo Instansi" class="logo">
           <div>
             <p class="eyebrow">Sistem Administrasi Tamu</p>
-            <h1>Buku Tamu Digital</h1>
+            <h1 class="brand-title">Buku Tamu Digital</h1>
           </div>
         </div>
 
@@ -30,9 +34,13 @@
 
         <ul class="feature-list">
           <li>Pengisian cepat dan mandiri</li>
-          <li>Tersimpan otomatis ke database</li>
+          <li>Data tersimpan otomatis ke database</li>
           <li>Dapat diakses melalui ponsel dan desktop</li>
         </ul>
+
+        <div class="left-footer">
+          Pelayanan yang lebih modern, cepat, dan profesional.
+        </div>
       </div>
 
       <div class="right-panel">
