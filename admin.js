@@ -215,8 +215,26 @@ guestTableBody.addEventListener("click", async (event) => {
   await loadGuests();
 });
 
-supabaseClient.auth.onAuthStateChange(async () => {
-  await checkSession();
+supabaseClient.auth.onAuthStateChange((event) => {
+  console.log("AUTH EVENT:", event);
+
+  if (event === "SIGNED_OUT") {
+    loginCard.style.display = "block";
+    adminCard.style.display = "none";
+    adminEmailLabel.textContent = "";
+    guestRows = [];
+    guestTableBody.innerHTML = `
+      <tr>
+        <td colspan="10" class="empty-state">Silakan login untuk melihat data.</td>
+      </tr>
+    `;
+    showMessage(loginMessage, "success", "Logout berhasil.");
+    return;
+  }
+
+  if (event === "SIGNED_IN") {
+    checkSession();
+  }
 });
 
 checkSession();
