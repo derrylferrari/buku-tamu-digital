@@ -238,3 +238,30 @@ supabaseClient.auth.onAuthStateChange((event) => {
 });
 
 checkSession();
+
+const exportBtn = document.getElementById("exportBtn");
+
+exportBtn.addEventListener("click", () => {
+  if (!guestRows.length) {
+    alert("Tidak ada data untuk diexport.");
+    return;
+  }
+
+  const dataExport = guestRows.map((row, index) => ({
+    No: index + 1,
+    "Nama Lengkap": row.nama_lengkap,
+    Instansi: row.instansi,
+    "No HP": row.no_hp,
+    Email: row.email,
+    "Tujuan / PIC": row.tujuan,
+    Keperluan: row.keperluan,
+    Tanggal: formatDate(row.tanggal_kunjungan),
+    "Dibuat": formatDateTime(row.created_at),
+  }));
+
+  const worksheet = XLSX.utils.json_to_sheet(dataExport);
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, "Data Tamu");
+
+  XLSX.writeFile(workbook, "data_tamu.xlsx");
+});
