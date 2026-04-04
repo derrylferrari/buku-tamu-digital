@@ -106,17 +106,29 @@ async function loadGuests() {
 }
 
 async function checkSession() {
-  const { data } = await supabaseClient.auth.getSession();
+  const { data, error } = await supabaseClient.auth.getSession();
+
+  if (error) {
+    console.error("Gagal cek session:", error);
+  }
+
   const session = data?.session;
 
   if (session) {
     loginCard.style.display = "none";
     adminCard.style.display = "block";
-    adminEmailLabel.textContent = session.user.email;
+    adminEmailLabel.textContent = session.user.email || "";
     await loadGuests();
   } else {
     loginCard.style.display = "block";
     adminCard.style.display = "none";
+    adminEmailLabel.textContent = "";
+    guestRows = [];
+    guestTableBody.innerHTML = `
+      <tr>
+        <td colspan="10" class="empty-state">Silakan login untuk melihat data.</td>
+      </tr>
+    `;
   }
 }
 
@@ -150,9 +162,28 @@ loginForm.addEventListener("submit", async (event) => {
 });
 
 logoutBtn.addEventListener("click", async () => {
-  await supabaseClient.auth.signOut();
+  resetMessage(adminMessage);
   guestRows = [];
-  await checkSession();
+  guestTableBody.innerHTML = `
+    <tr>
+      <td colspan="10" class="empty-state">Anda telah logout.</td>
+    </tr>
+  `;
+
+  const { error } = await supabaseClient.auth.signOut();
+
+  if (error) {
+    console.error("Logout gagal:", error);
+    showMessage(adminMessage, "error", "Logout gagal. Silakan coba lagi.");
+    return;
+  }
+
+  adminCard.style.display = "none";
+  loginCard.style.display = "block";
+  adminEmailLabel.textContent = "";
+  searchInput.value = "";
+
+  showMessage(loginMessage, "success", "Logout berhasil.");
 });
 
 refreshBtn.addEventListener("click", async () => {
