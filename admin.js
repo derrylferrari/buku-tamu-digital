@@ -105,6 +105,34 @@ async function loadGuests() {
   applySearch();
 }
 
+document.getElementById("exportBtn").addEventListener("click", exportToExcel);
+
+async function exportToExcel() {
+  const { data, error } = await supabase
+    .from("tamu")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    alert("Gagal mengambil data");
+    return;
+  }
+
+  let csv = "No,Nama,Instansi,No HP,Email,Tujuan,Keperluan,Tanggal,Created At\n";
+
+  data.forEach((item, index) => {
+    csv += `${index + 1},"${item.nama_lengkap}","${item.instansi}","${item.no_hp}","${item.email}","${item.tujuan}","${item.keperluan}","${item.tanggal_kunjungan}","${item.created_at}"\n`;
+  });
+
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "data_tamu_kantor_arsip.csv";
+  link.click();
+}
+
 async function checkSession() {
   const { data, error } = await supabaseClient.auth.getSession();
 
