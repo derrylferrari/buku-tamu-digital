@@ -14,6 +14,7 @@ const guestTableBody = document.getElementById("guestTableBody");
 const logoutBtn = document.getElementById("logoutBtn");
 const refreshBtn = document.getElementById("refreshBtn");
 const searchInput = document.getElementById("searchInput");
+const resetFilterBtn = document.getElementById("resetFilterBtn");
 
 let guestRows = [];
 
@@ -264,4 +265,14 @@ exportBtn.addEventListener("click", () => {
   XLSX.utils.book_append_sheet(workbook, worksheet, "Data Tamu");
 
   XLSX.writeFile(workbook, "data_tamu.xlsx");
+});
+
+resetFilterBtn.addEventListener("click", () => {
+  searchInput.value = "";
+  filterTanggal.value = "";
+  filterInstansi.value = "";
+  filterTujuan.value = "";
+  filterKeperluan.value = "";
+
+  applySearch();
 });
