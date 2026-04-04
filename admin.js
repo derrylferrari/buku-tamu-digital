@@ -3,7 +3,6 @@ const SUPABASE_KEY = "sb_publishable_7rY6D_gGfGUVBreIZfQ_Xw_xGpb3757";
 
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// ELEMENT
 const loginCard = document.getElementById("loginCard");
 const adminCard = document.getElementById("adminCard");
 const loginForm = document.getElementById("loginForm");
@@ -16,16 +15,8 @@ const logoutBtn = document.getElementById("logoutBtn");
 const refreshBtn = document.getElementById("refreshBtn");
 const searchInput = document.getElementById("searchInput");
 
-// TAMBAHAN BARU
-const exportBtn = document.getElementById("exportBtn");
-const filterBtn = document.getElementById("filterBtn");
-const filterTanggal = document.getElementById("filterTanggal");
-const filterInstansi = document.getElementById("filterInstansi");
-const statsContainer = document.getElementById("stats");
-
 let guestRows = [];
 
-// ================= UTIL =================
 function showMessage(el, type, text) {
   el.className = `form-message ${type}`;
   el.textContent = text;
@@ -46,11 +37,12 @@ function formatDateTime(dateString) {
   return new Date(dateString).toLocaleString("id-ID");
 }
 
-// ================= TABLE =================
 function renderTable(rows) {
   if (!rows.length) {
     guestTableBody.innerHTML = `
-      <tr><td colspan="10">Belum ada data.</td></tr>
+      <tr>
+        <td colspan="10" class="empty-state">Belum ada data tamu.</td>
+      </tr>
     `;
     return;
   }
@@ -71,22 +63,27 @@ function renderTable(rows) {
   `).join("");
 }
 
-// ================= SEARCH =================
 function applySearch() {
-  const keyword = searchInput.value.toLowerCase();
+  const keyword = searchInput.value.trim().toLowerCase();
 
-  const filtered = guestRows.filter((row) =>
-    (row.nama_lengkap || "").toLowerCase().includes(keyword) ||
-    (row.instansi || "").toLowerCase().includes(keyword) ||
-    (row.tujuan || "").toLowerCase().includes(keyword)
-  );
+  const filtered = guestRows.filter((row) => {
+    return (
+      (row.nama_lengkap || "").toLowerCase().includes(keyword) ||
+      (row.instansi || "").toLowerCase().includes(keyword) ||
+      (row.tujuan || "").toLowerCase().includes(keyword)
+    );
+  });
 
   renderTable(filtered);
 }
 
-// ================= LOAD DATA =================
 async function loadGuests() {
-  guestTableBody.innerHTML = `<tr><td colspan="10">Memuat...</td></tr>`;
+  resetMessage(adminMessage);
+  guestTableBody.innerHTML = `
+    <tr>
+      <td colspan="10" class="empty-state">Memuat data...</td>
+    </tr>
+  `;
 
   const { data, error } = await supabaseClient
     .from("tamu")
@@ -94,120 +91,56 @@ async function loadGuests() {
     .order("created_at", { ascending: false });
 
   if (error) {
-    showMessage(adminMessage, "error", "Gagal memuat data");
+    console.error(error);
+    showMessage(adminMessage, "error", "Gagal memuat data tamu.");
+    guestTableBody.innerHTML = `
+      <tr>
+        <td colspan="10" class="empty-state">Data gagal dimuat.</td>
+      </tr>
+    `;
     return;
   }
 
   guestRows = data || [];
   applySearch();
-  loadStats();
 }
 
-// ================= FILTER =================
-filterBtn.addEventListener("click", async () => {
-  let query = supabaseClient.from("tamu").select("*");
-
-  if (filterTanggal.value) {
-    query = query.eq("tanggal_kunjungan", filterTanggal.value);
-  }
-
-  if (filterInstansi.value) {
-    query = query.ilike("instansi", `%${filterInstansi.value}%`);
-  }
-
-  const { data, error } = await query.order("created_at", { ascending: false });
+async function checkSession() {
+  const { data, error } = await supabaseClient.auth.getSession();
 
   if (error) {
-    showMessage(adminMessage, "error", "Filter gagal");
-    return;
+    console.error("Gagal cek session:", error);
   }
 
-  guestRows = data || [];
-  renderTable(guestRows);
-});
+  const session = data?.session;
 
-// ================= EXPORT EXCEL =================
-exportBtn.addEventListener("click", async () => {
-  const { data, error } = await supabaseClient
-    .from("tamu")
-    .select("*")
-    .order("created_at", { ascending: false });
-
-  if (error) {
-    alert("Gagal export");
-    return;
+  if (session) {
+    loginCard.style.display = "none";
+    adminCard.style.display = "block";
+    adminEmailLabel.textContent = session.user.email || "";
+    await loadGuests();
+  } else {
+    loginCard.style.display = "block";
+    adminCard.style.display = "none";
+    adminEmailLabel.textContent = "";
+    guestRows = [];
+    guestTableBody.innerHTML = `
+      <tr>
+        <td colspan="10" class="empty-state">Silakan login untuk melihat data.</td>
+      </tr>
+    `;
   }
-
-  let csv = "No,Nama,Instansi,No HP,Email,Tujuan,Keperluan,Tanggal\n";
-
-  data.forEach((d, i) => {
-    csv += `${i+1},"${d.nama_lengkap}","${d.instansi}","${d.no_hp}","${d.email}","${d.tujuan}","${d.keperluan}","${d.tanggal_kunjungan}"\n`;
-  });
-
-  const blob = new Blob([csv], { type: "text/csv" });
-  const url = URL.createObjectURL(blob);
-
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "data_tamu.csv";
-  a.click();
-});
-
-// ================= STATS =================
-function loadStats() {
-  const total = guestRows.length;
-
-  const today = new Date().toISOString().split("T")[0];
-  const todayCount = guestRows.filter(d => d.tanggal_kunjungan === today).length;
-
-  const instansiMap = {};
-  guestRows.forEach(d => {
-    instansiMap[d.instansi] = (instansiMap[d.instansi] || 0) + 1;
-  });
-
-  const top = Object.entries(instansiMap)
-    .sort((a,b) => b[1] - a[1])
-    .slice(0,3);
-
-  statsContainer.innerHTML = `
-    <div class="stat-item">Total: ${total}</div>
-    <div class="stat-item">Hari Ini: ${todayCount}</div>
-    <div class="stat-item">
-      Top Instansi:<br>
-      ${top.map(i => `${i[0]} (${i[1]})`).join("<br>")}
-    </div>
-  `;
 }
 
-// ================= DELETE =================
-guestTableBody.addEventListener("click", async (e) => {
-  const btn = e.target.closest(".small-btn");
-  if (!btn) return;
+loginForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  resetMessage(loginMessage);
 
-  if (!confirm("Hapus data ini?")) return;
+  const email = document.getElementById("adminEmail").value.trim();
+  const password = document.getElementById("adminPassword").value;
 
-  const id = btn.dataset.id;
-
-  const { error } = await supabaseClient
-    .from("tamu")
-    .delete()
-    .eq("id", id);
-
-  if (error) {
-    showMessage(adminMessage, "error", "Gagal hapus");
-    return;
-  }
-
-  showMessage(adminMessage, "success", "Berhasil dihapus");
-  loadGuests();
-});
-
-// ================= AUTH =================
-loginForm.addEventListener("submit", async (e) => {
-  e.preventDefault();
-
-  const email = adminEmail.value;
-  const password = adminPassword.value;
+  loginBtn.disabled = true;
+  loginBtn.textContent = "Masuk...";
 
   const { error } = await supabaseClient.auth.signInWithPassword({
     email,
@@ -215,34 +148,93 @@ loginForm.addEventListener("submit", async (e) => {
   });
 
   if (error) {
-    showMessage(loginMessage, "error", "Login gagal");
+    console.error(error);
+    showMessage(loginMessage, "error", "Login gagal. Periksa email dan password.");
+    loginBtn.disabled = false;
+    loginBtn.textContent = "Login";
     return;
   }
 
-  checkSession();
+  loginBtn.disabled = false;
+  loginBtn.textContent = "Login";
+  loginForm.reset();
+  await checkSession();
 });
 
 logoutBtn.addEventListener("click", async () => {
-  await supabaseClient.auth.signOut();
-  location.reload();
+  resetMessage(adminMessage);
+  guestRows = [];
+  guestTableBody.innerHTML = `
+    <tr>
+      <td colspan="10" class="empty-state">Anda telah logout.</td>
+    </tr>
+  `;
+
+  const { error } = await supabaseClient.auth.signOut();
+
+  if (error) {
+    console.error("Logout gagal:", error);
+    showMessage(adminMessage, "error", "Logout gagal. Silakan coba lagi.");
+    return;
+  }
+
+  adminCard.style.display = "none";
+  loginCard.style.display = "block";
+  adminEmailLabel.textContent = "";
+  searchInput.value = "";
+
+  showMessage(loginMessage, "success", "Logout berhasil.");
 });
 
-async function checkSession() {
-  const { data } = await supabaseClient.auth.getSession();
-  const session = data.session;
-
-  if (session) {
-    loginCard.style.display = "none";
-    adminCard.style.display = "block";
-    adminEmailLabel.textContent = session.user.email;
-    loadGuests();
-  } else {
-    loginCard.style.display = "block";
-    adminCard.style.display = "none";
-  }
-}
+refreshBtn.addEventListener("click", async () => {
+  await loadGuests();
+});
 
 searchInput.addEventListener("input", applySearch);
-refreshBtn.addEventListener("click", loadGuests);
+
+guestTableBody.addEventListener("click", async (event) => {
+  const button = event.target.closest(".small-btn");
+  if (!button) return;
+
+  const id = button.dataset.id;
+  const confirmed = window.confirm("Yakin ingin menghapus data ini?");
+  if (!confirmed) return;
+
+  const { error } = await supabaseClient
+    .from("tamu")
+    .delete()
+    .eq("id", id);
+
+  if (error) {
+    console.error(error);
+    showMessage(adminMessage, "error", "Gagal menghapus data.");
+    return;
+  }
+
+  showMessage(adminMessage, "success", "Data berhasil dihapus.");
+  await loadGuests();
+});
+
+supabaseClient.auth.onAuthStateChange((event) => {
+  console.log("AUTH EVENT:", event);
+
+  if (event === "SIGNED_OUT") {
+    loginCard.style.display = "block";
+    adminCard.style.display = "none";
+    adminEmailLabel.textContent = "";
+    guestRows = [];
+    guestTableBody.innerHTML = `
+      <tr>
+        <td colspan="10" class="empty-state">Silakan login untuk melihat data.</td>
+      </tr>
+    `;
+    showMessage(loginMessage, "success", "Logout berhasil.");
+    return;
+  }
+
+  if (event === "SIGNED_IN") {
+    checkSession();
+  }
+});
 
 checkSession();
