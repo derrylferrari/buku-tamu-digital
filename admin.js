@@ -15,6 +15,8 @@ const logoutBtn = document.getElementById("logoutBtn");
 const refreshBtn = document.getElementById("refreshBtn");
 const searchInput = document.getElementById("searchInput");
 const resetFilterBtn = document.getElementById("resetFilterBtn");
+const exportBtn = document.getElementById("exportBtn");
+
 const filterTanggal = document.getElementById("filterTanggal");
 const filterInstansi = document.getElementById("filterInstansi");
 const filterTujuan = document.getElementById("filterTujuan");
@@ -24,11 +26,13 @@ let guestRows = [];
 let filteredGuestRows = [];
 
 function showMessage(el, type, text) {
+  if (!el) return;
   el.className = `form-message ${type}`;
   el.textContent = text;
 }
 
 function resetMessage(el) {
+  if (!el) return;
   el.className = "form-message";
   el.textContent = "";
 }
@@ -43,7 +47,22 @@ function formatDateTime(dateString) {
   return new Date(dateString).toLocaleString("id-ID");
 }
 
+function normalizeDate(dateString) {
+  if (!dateString) return "";
+  const d = new Date(dateString);
+
+  if (isNaN(d.getTime())) return "";
+
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
 function renderTable(rows) {
+  if (!guestTableBody) return;
+
   if (!rows.length) {
     guestTableBody.innerHTML = `
       <tr>
@@ -53,7 +72,9 @@ function renderTable(rows) {
     return;
   }
 
-  guestTableBody.innerHTML = rows.map((row, index) => `
+  guestTableBody.innerHTML = rows
+    .map(
+      (row, index) => `
     <tr>
       <td>${index + 1}</td>
       <td>${row.nama_lengkap ?? "-"}</td>
@@ -66,28 +87,19 @@ function renderTable(rows) {
       <td>${formatDateTime(row.created_at)}</td>
       <td><button class="small-btn" data-id="${row.id}">Hapus</button></td>
     </tr>
-  `).join("");
-}
-
-function normalizeDate(dateString) {
-  if (!dateString) return "";
-  const d = new Date(dateString);
-
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-
-  return `${year}-${month}-${day}`;
+  `
+    )
+    .join("");
 }
 
 function applySearch() {
-  const keyword = searchInput.value.trim().toLowerCase();
+  const keyword = searchInput ? searchInput.value.trim().toLowerCase() : "";
   const tanggal = filterTanggal ? filterTanggal.value : "";
   const instansi = filterInstansi ? filterInstansi.value.trim().toLowerCase() : "";
   const tujuan = filterTujuan ? filterTujuan.value.trim().toLowerCase() : "";
   const keperluan = filterKeperluan ? filterKeperluan.value.trim().toLowerCase() : "";
 
-  const filtered = guestRows.filter((row) => {
+  filteredGuestRows = guestRows.filter((row) => {
     const namaRow = (row.nama_lengkap || "").toLowerCase();
     const instansiRow = (row.instansi || "").toLowerCase();
     const tujuanRow = (row.tujuan || "").toLowerCase();
@@ -100,15 +112,9 @@ function applySearch() {
       instansiRow.includes(keyword) ||
       tujuanRow.includes(keyword);
 
-    const matchTanggal =
-      !tanggal || tanggalRow === tanggal;
-
-    const matchInstansi =
-      !instansi || instansiRow.includes(instansi);
-
-    const matchTujuan =
-      !tujuan || tujuanRow.includes(tujuan);
-
+    const matchTanggal = !tanggal || tanggalRow === tanggal;
+    const matchInstansi = !instansi || instansiRow.includes(instansi);
+    const matchTujuan = !tujuan || tujuanRow.includes(tujuan);
     const matchKeperluan =
       !keperluan ||
       keperluan === "semua keperluan" ||
@@ -129,11 +135,14 @@ function applySearch() {
 
 async function loadGuests() {
   resetMessage(adminMessage);
-  guestTableBody.innerHTML = `
-    <tr>
-      <td colspan="10" class="empty-state">Memuat data...</td>
-    </tr>
-  `;
+
+  if (guestTableBody) {
+    guestTableBody.innerHTML = `
+      <tr>
+        <td colspan="10" class="empty-state">Memuat data...</td>
+      </tr>
+    `;
+  }
 
   const { data, error } = await supabaseClient
     .from("tamu")
@@ -143,15 +152,19 @@ async function loadGuests() {
   if (error) {
     console.error(error);
     showMessage(adminMessage, "error", "Gagal memuat data tamu.");
-    guestTableBody.innerHTML = `
-      <tr>
-        <td colspan="10" class="empty-state">Data gagal dimuat.</td>
-      </tr>
-    `;
+
+    if (guestTableBody) {
+      guestTableBody.innerHTML = `
+        <tr>
+          <td colspan="10" class="empty-state">Data gagal dimuat.</td>
+        </tr>
+      `;
+    }
     return;
   }
 
   guestRows = data || [];
+  filteredGuestRows = [...guestRows];
   applySearch();
 }
 
@@ -165,82 +178,105 @@ async function checkSession() {
   const session = data?.session;
 
   if (session) {
-    loginCard.style.display = "none";
-    adminCard.style.display = "block";
-    adminEmailLabel.textContent = session.user.email || "";
+    if (loginCard) loginCard.style.display = "none";
+    if (adminCard) adminCard.style.display = "block";
+    if (adminEmailLabel) adminEmailLabel.textContent = session.user.email || "";
     await loadGuests();
   } else {
-    loginCard.style.display = "block";
-    adminCard.style.display = "none";
-    adminEmailLabel.textContent = "";
+    if (loginCard) loginCard.style.display = "block";
+    if (adminCard) adminCard.style.display = "none";
+    if (adminEmailLabel) adminEmailLabel.textContent = "";
+
     guestRows = [];
-    guestTableBody.innerHTML = `
-      <tr>
-        <td colspan="10" class="empty-state">Silakan login untuk melihat data.</td>
-      </tr>
-    `;
+    filteredGuestRows = [];
+
+    if (guestTableBody) {
+      guestTableBody.innerHTML = `
+        <tr>
+          <td colspan="10" class="empty-state">Silakan login untuk melihat data.</td>
+        </tr>
+      `;
+    }
   }
 }
 
-loginForm.addEventListener("submit", async (event) => {
-  event.preventDefault();
-  resetMessage(loginMessage);
+if (loginForm) {
+  loginForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    resetMessage(loginMessage);
 
-  const email = document.getElementById("adminEmail").value.trim();
-  const password = document.getElementById("adminPassword").value;
+    const email = document.getElementById("adminEmail")?.value.trim() || "";
+    const password = document.getElementById("adminPassword")?.value || "";
 
-  loginBtn.disabled = true;
-  loginBtn.textContent = "Masuk...";
+    loginBtn.disabled = true;
+    loginBtn.textContent = "Masuk...";
 
-  const { error } = await supabaseClient.auth.signInWithPassword({
-    email,
-    password,
-  });
+    const { error } = await supabaseClient.auth.signInWithPassword({
+      email,
+      password,
+    });
 
-  if (error) {
-    console.error(error);
-    showMessage(loginMessage, "error", "Login gagal. Periksa email dan password.");
+    if (error) {
+      console.error(error);
+      showMessage(loginMessage, "error", "Login gagal. Periksa email dan password.");
+      loginBtn.disabled = false;
+      loginBtn.textContent = "Login";
+      return;
+    }
+
     loginBtn.disabled = false;
     loginBtn.textContent = "Login";
-    return;
-  }
+    loginForm.reset();
+    await checkSession();
+  });
+}
 
-  loginBtn.disabled = false;
-  loginBtn.textContent = "Login";
-  loginForm.reset();
-  await checkSession();
-});
+if (logoutBtn) {
+  logoutBtn.addEventListener("click", async () => {
+    resetMessage(adminMessage);
 
-logoutBtn.addEventListener("click", async () => {
-  resetMessage(adminMessage);
-  guestRows = [];
-  guestTableBody.innerHTML = `
-    <tr>
-      <td colspan="10" class="empty-state">Anda telah logout.</td>
-    </tr>
-  `;
+    guestRows = [];
+    filteredGuestRows = [];
 
-  const { error } = await supabaseClient.auth.signOut();
+    if (guestTableBody) {
+      guestTableBody.innerHTML = `
+        <tr>
+          <td colspan="10" class="empty-state">Anda telah logout.</td>
+        </tr>
+      `;
+    }
 
-  if (error) {
-    console.error("Logout gagal:", error);
-    showMessage(adminMessage, "error", "Logout gagal. Silakan coba lagi.");
-    return;
-  }
+    const { error } = await supabaseClient.auth.signOut();
 
-  adminCard.style.display = "none";
-  loginCard.style.display = "block";
-  adminEmailLabel.textContent = "";
-  searchInput.value = "";
+    if (error) {
+      console.error("Logout gagal:", error);
+      showMessage(adminMessage, "error", "Logout gagal. Silakan coba lagi.");
+      return;
+    }
 
-  showMessage(loginMessage, "success", "Logout berhasil.");
-});
+    if (adminCard) adminCard.style.display = "none";
+    if (loginCard) loginCard.style.display = "block";
+    if (adminEmailLabel) adminEmailLabel.textContent = "";
+    if (searchInput) searchInput.value = "";
+    if (filterTanggal) filterTanggal.value = "";
+    if (filterInstansi) filterInstansi.value = "";
+    if (filterTujuan) filterTujuan.value = "";
+    if (filterKeperluan) filterKeperluan.value = "";
 
-refreshBtn.addEventListener("click", async () => {
-  await loadGuests();
-});
+    showMessage(loginMessage, "success", "Logout berhasil.");
+  });
+}
 
-searchInput.addEventListener("input", applySearch);
+if (refreshBtn) {
+  refreshBtn.addEventListener("click", async () => {
+    await loadGuests();
+  });
+}
+
+if (searchInput) {
+  searchInput.addEventListener("input", applySearch);
+}
+
 if (filterTanggal) {
   filterTanggal.addEventListener("change", applySearch);
 }
@@ -257,42 +293,59 @@ if (filterKeperluan) {
   filterKeperluan.addEventListener("change", applySearch);
 }
 
-guestTableBody.addEventListener("click", async (event) => {
-  const button = event.target.closest(".small-btn");
-  if (!button) return;
+if (resetFilterBtn) {
+  resetFilterBtn.addEventListener("click", () => {
+    if (searchInput) searchInput.value = "";
+    if (filterTanggal) filterTanggal.value = "";
+    if (filterInstansi) filterInstansi.value = "";
+    if (filterTujuan) filterTujuan.value = "";
+    if (filterKeperluan) filterKeperluan.value = "";
 
-  const id = button.dataset.id;
-  const confirmed = window.confirm("Yakin ingin menghapus data ini?");
-  if (!confirmed) return;
+    applySearch();
+  });
+}
 
-  const { error } = await supabaseClient
-    .from("tamu")
-    .delete()
-    .eq("id", id);
+if (guestTableBody) {
+  guestTableBody.addEventListener("click", async (event) => {
+    const button = event.target.closest(".small-btn");
+    if (!button) return;
 
-  if (error) {
-    console.error(error);
-    showMessage(adminMessage, "error", "Gagal menghapus data.");
-    return;
-  }
+    const id = button.dataset.id;
+    const confirmed = window.confirm("Yakin ingin menghapus data ini?");
+    if (!confirmed) return;
 
-  showMessage(adminMessage, "success", "Data berhasil dihapus.");
-  await loadGuests();
-});
+    const { error } = await supabaseClient.from("tamu").delete().eq("id", id);
+
+    if (error) {
+      console.error(error);
+      showMessage(adminMessage, "error", "Gagal menghapus data.");
+      return;
+    }
+
+    showMessage(adminMessage, "success", "Data berhasil dihapus.");
+    await loadGuests();
+  });
+}
 
 supabaseClient.auth.onAuthStateChange((event) => {
   console.log("AUTH EVENT:", event);
 
   if (event === "SIGNED_OUT") {
-    loginCard.style.display = "block";
-    adminCard.style.display = "none";
-    adminEmailLabel.textContent = "";
+    if (loginCard) loginCard.style.display = "block";
+    if (adminCard) adminCard.style.display = "none";
+    if (adminEmailLabel) adminEmailLabel.textContent = "";
+
     guestRows = [];
-    guestTableBody.innerHTML = `
-      <tr>
-        <td colspan="10" class="empty-state">Silakan login untuk melihat data.</td>
-      </tr>
-    `;
+    filteredGuestRows = [];
+
+    if (guestTableBody) {
+      guestTableBody.innerHTML = `
+        <tr>
+          <td colspan="10" class="empty-state">Silakan login untuk melihat data.</td>
+        </tr>
+      `;
+    }
+
     showMessage(loginMessage, "success", "Logout berhasil.");
     return;
   }
@@ -302,45 +355,34 @@ supabaseClient.auth.onAuthStateChange((event) => {
   }
 });
 
+if (exportBtn) {
+  exportBtn.addEventListener("click", () => {
+    if (!filteredGuestRows.length) {
+      alert("Tidak ada data hasil filter untuk diexport.");
+      return;
+    }
+
+    const dataExport = filteredGuestRows.map((row, index) => ({
+      No: index + 1,
+      "Nama Lengkap": row.nama_lengkap || "-",
+      Instansi: row.instansi || "-",
+      "No HP": row.no_hp || "-",
+      Email: row.email || "-",
+      "Tujuan / PIC": row.tujuan || "-",
+      Keperluan: row.keperluan || "-",
+      "Tanggal Kunjungan": formatDate(row.tanggal_kunjungan),
+      "Dibuat Pada": formatDateTime(row.created_at),
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(dataExport);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Data Tamu");
+
+    const today = new Date();
+    const fileDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+
+    XLSX.writeFile(workbook, `data_tamu_filtered_${fileDate}.xlsx`);
+  });
+}
+
 checkSession();
-
-const exportBtn = document.getElementById("exportBtn");
-
-exportBtn.addEventListener("click", () => {
-  const exportBtn = document.getElementById("exportBtn");
-
-exportBtn.addEventListener("click", () => {
-  if (!filteredGuestRows.length) {
-    alert("Tidak ada data hasil filter untuk diexport.");
-    return;
-  }
-
-  const dataExport = filteredGuestRows.map((row, index) => ({
-    No: index + 1,
-    "Nama Lengkap": row.nama_lengkap || "-",
-    Instansi: row.instansi || "-",
-    "No HP": row.no_hp || "-",
-    Email: row.email || "-",
-    "Tujuan / PIC": row.tujuan || "-",
-    Keperluan: row.keperluan || "-",
-    "Tanggal Kunjungan": formatDate(row.tanggal_kunjungan),
-    "Dibuat Pada": formatDateTime(row.created_at),
-  }));
-
-  const worksheet = XLSX.utils.json_to_sheet(dataExport);
-  const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, worksheet, "Data Tamu");
-
-  XLSX.writeFile(workbook, "data_tamu_filtered.xlsx");
-});
-
-resetFilterBtn.addEventListener("click", () => {
-  searchInput.value = "";
-
-  if (filterTanggal) filterTanggal.value = "";
-  if (filterInstansi) filterInstansi.value = "";
-  if (filterTujuan) filterTujuan.value = "";
-  if (filterKeperluan) filterKeperluan.value = "";
-
-  applySearch();
-});
