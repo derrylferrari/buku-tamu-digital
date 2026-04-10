@@ -7,10 +7,10 @@
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
 
   <link rel="stylesheet" href="style.css" />
+
   <style>
     .admin-page {
       position: relative;
@@ -149,8 +149,13 @@
       flex-wrap: wrap;
     }
 
-    .toolbar input {
+    .toolbar input,
+    .toolbar select {
       max-width: 340px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid #d1d5db;
+      font: inherit;
     }
 
     .table-wrap {
@@ -258,16 +263,15 @@
 
           <div class="admin-actions">
             <span id="adminEmailLabel"></span>
-            <button id="logoutBtn" class="ghost-btn">Logout</button>
+            <button id="logoutBtn" class="ghost-btn" type="button">Logout</button>
           </div>
         </div>
 
         <div class="admin-content">
           <div class="toolbar">
             <input type="text" id="searchInput" placeholder="Cari nama, instansi, tujuan..." />
-        
             <input type="date" id="filterTanggal" />
-        
+
             <select id="filterKeperluan">
               <option value="">Semua Keperluan</option>
               <option value="Audiensi">Audiensi</option>
@@ -279,10 +283,10 @@
               <option value="Silaturahmi">Silaturahmi</option>
               <option value="Lainnya">Lainnya</option>
             </select>
-            
-            <button id="refreshBtn" class="ghost-btn">Refresh</button>
-            <button id="exportBtn" class="ghost-btn">Export Excel</button>
-            <button id="resetFilterBtn" class="ghost-btn">Reset Filter</button>
+
+            <button id="refreshBtn" class="ghost-btn" type="button">Refresh</button>
+            <button id="exportBtn" class="ghost-btn" type="button">Export Excel</button>
+            <button id="resetFilterBtn" class="ghost-btn" type="button">Reset Filter</button>
           </div>
 
           <div class="table-wrap">
@@ -303,7 +307,7 @@
               </thead>
               <tbody id="guestTableBody">
                 <tr>
-                  <td colspan="10" class="empty-state">Memuat data...</td>
+                  <td colspan="10" class="empty-state">Silakan login untuk melihat data.</td>
                 </tr>
               </tbody>
             </table>
@@ -316,7 +320,7 @@
   </main>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="admin.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+  <script src="admin.js"></script>
 </body>
 </html>
