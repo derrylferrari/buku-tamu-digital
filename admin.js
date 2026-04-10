@@ -35,10 +35,8 @@ let filteredGuestRows = [];
 
 const ITEMS_PER_PAGE = 50;
 let currentPage = 1;
-let currentSort = {
-  field: "tanggal",
-  direction: "desc",
-};
+let currentSortField = "tanggal";
+let currentSortDirection = "desc";
 
 function showMessage(el, type, text) {
   if (!el) return;
@@ -78,53 +76,57 @@ function normalizeDate(dateString) {
   return `${year}-${month}-${day}`;
 }
 
-function compareStrings(a, b) {
-  return a.localeCompare(b, "id", { sensitivity: "base" });
+function getSortTimestamp(row) {
+  const raw = row.tanggal_kunjungan || row.created_at || "";
+  const time = new Date(raw).getTime();
+  return isNaN(time) ? 0 : time;
 }
 
-function sortRows(rows) {
-  const sorted = [...rows];
+function sortData(rows) {
+  const cloned = [...rows];
 
-  sorted.sort((a, b) => {
-    if (currentSort.field === "nama") {
-      const namaA = (a.nama_lengkap || "").trim();
-      const namaB = (b.nama_lengkap || "").trim();
-      const result = compareStrings(namaA, namaB);
-      return currentSort.direction === "asc" ? result : -result;
+  cloned.sort((a, b) => {
+    if (currentSortField === "nama") {
+      const aName = (a.nama_lengkap || "").toLowerCase().trim();
+      const bName = (b.nama_lengkap || "").toLowerCase().trim();
+
+      const comparison = aName.localeCompare(bName, "id", { sensitivity: "base" });
+      return currentSortDirection === "asc" ? comparison : -comparison;
     }
 
-    const tanggalA = new Date(a.tanggal_kunjungan || a.created_at || 0).getTime();
-    const tanggalB = new Date(b.tanggal_kunjungan || b.created_at || 0).getTime();
-    const result = tanggalA - tanggalB;
-    return currentSort.direction === "asc" ? result : -result;
+    const aTime = getSortTimestamp(a);
+    const bTime = getSortTimestamp(b);
+    const comparison = aTime - bTime;
+
+    return currentSortDirection === "asc" ? comparison : -comparison;
   });
 
-  return sorted;
+  return cloned;
 }
 
 function updateSortUI() {
   if (sortNamaIcon) sortNamaIcon.textContent = "↕";
   if (sortTanggalIcon) sortTanggalIcon.textContent = "↕";
 
-  if (currentSort.field === "nama") {
+  if (currentSortField === "nama") {
     if (sortNamaIcon) {
-      sortNamaIcon.textContent = currentSort.direction === "asc" ? "A-Z" : "Z-A";
+      sortNamaIcon.textContent = currentSortDirection === "asc" ? "A-Z" : "Z-A";
     }
     if (sortStatus) {
       sortStatus.textContent =
-        currentSort.direction === "asc"
+        currentSortDirection === "asc"
           ? "Urutan: Nama A-Z"
           : "Urutan: Nama Z-A";
     }
   }
 
-  if (currentSort.field === "tanggal") {
+  if (currentSortField === "tanggal") {
     if (sortTanggalIcon) {
-      sortTanggalIcon.textContent = currentSort.direction === "desc" ? "↓" : "↑";
+      sortTanggalIcon.textContent = currentSortDirection === "desc" ? "↓" : "↑";
     }
     if (sortStatus) {
       sortStatus.textContent =
-        currentSort.direction === "desc"
+        currentSortDirection === "desc"
           ? "Urutan: Tanggal terbaru"
           : "Urutan: Tanggal terlama";
     }
@@ -132,13 +134,14 @@ function updateSortUI() {
 }
 
 function getTotalPages() {
-  return Math.max(1, Math.ceil(filteredGuestRows.length / ITEMS_PER_PAGE));
+  const total = Math.ceil(filteredGuestRows.length / ITEMS_PER_PAGE);
+  return total > 0 ? total : 1;
 }
 
-function getPaginatedRows() {
-  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-  const endIndex = startIndex + ITEMS_PER_PAGE;
-  return filteredGuestRows.slice(startIndex, endIndex);
+function getCurrentPageRows() {
+  const start = (currentPage - 1) * ITEMS_PER_PAGE;
+  const end = start + ITEMS_PER_PAGE;
+  return filteredGuestRows.slice(start, end);
 }
 
 function updatePaginationUI() {
@@ -160,13 +163,8 @@ function updatePaginationUI() {
     pageIndicator.textContent = `Halaman ${currentPage} / ${totalPages}`;
   }
 
-  if (prevPageBtn) {
-    prevPageBtn.disabled = currentPage <= 1;
-  }
-
-  if (nextPageBtn) {
-    nextPageBtn.disabled = currentPage >= totalPages;
-  }
+  if (prevPageBtn) prevPageBtn.disabled = currentPage <= 1;
+  if (nextPageBtn) nextPageBtn.disabled = currentPage >= totalPages;
 }
 
 function renderTable(rows) {
@@ -183,22 +181,20 @@ function renderTable(rows) {
 
   const startNumber = (currentPage - 1) * ITEMS_PER_PAGE;
 
-  guestTableBody.innerHTML = rows
-    .map((row, index) => `
-      <tr>
-        <td>${startNumber + index + 1}</td>
-        <td>${row.nama_lengkap ?? "-"}</td>
-        <td>${row.instansi ?? "-"}</td>
-        <td>${row.no_hp ?? "-"}</td>
-        <td>${row.email ?? "-"}</td>
-        <td>${row.tujuan ?? "-"}</td>
-        <td>${row.keperluan ?? "-"}</td>
-        <td>${formatDate(row.tanggal_kunjungan)}</td>
-        <td>${formatDateTime(row.created_at)}</td>
-        <td><button class="small-btn" data-id="${row.id}" type="button">Hapus</button></td>
-      </tr>
-    `)
-    .join("");
+  guestTableBody.innerHTML = rows.map((row, index) => `
+    <tr>
+      <td>${startNumber + index + 1}</td>
+      <td>${row.nama_lengkap ?? "-"}</td>
+      <td>${row.instansi ?? "-"}</td>
+      <td>${row.no_hp ?? "-"}</td>
+      <td>${row.email ?? "-"}</td>
+      <td>${row.tujuan ?? "-"}</td>
+      <td>${row.keperluan ?? "-"}</td>
+      <td>${formatDate(row.tanggal_kunjungan)}</td>
+      <td>${formatDateTime(row.created_at)}</td>
+      <td><button class="small-btn" data-id="${row.id}" type="button">Hapus</button></td>
+    </tr>
+  `).join("");
 }
 
 function applyFilters(resetPage = true) {
@@ -207,33 +203,32 @@ function applyFilters(resetPage = true) {
   const keperluan = filterKeperluan ? filterKeperluan.value.trim().toLowerCase() : "";
 
   let result = guestRows.filter((row) => {
-    const namaRow = (row.nama_lengkap || "").toLowerCase();
-    const instansiRow = (row.instansi || "").toLowerCase();
-    const tujuanRow = (row.tujuan || "").toLowerCase();
-    const keperluanRow = (row.keperluan || "").toLowerCase();
-    const tanggalRow = normalizeDate(row.tanggal_kunjungan);
+    const nama = (row.nama_lengkap || "").toLowerCase();
+    const instansi = (row.instansi || "").toLowerCase();
+    const tujuan = (row.tujuan || "").toLowerCase();
+    const rowKeperluan = (row.keperluan || "").toLowerCase();
+    const rowTanggal = normalizeDate(row.tanggal_kunjungan);
 
     const matchKeyword =
       !keyword ||
-      namaRow.includes(keyword) ||
-      instansiRow.includes(keyword) ||
-      tujuanRow.includes(keyword);
+      nama.includes(keyword) ||
+      instansi.includes(keyword) ||
+      tujuan.includes(keyword);
 
-    const matchTanggal = !tanggal || tanggalRow === tanggal;
-    const matchKeperluan = !keperluan || keperluanRow === keperluan;
+    const matchTanggal = !tanggal || rowTanggal === tanggal;
+    const matchKeperluan = !keperluan || rowKeperluan === keperluan;
 
     return matchKeyword && matchTanggal && matchKeperluan;
   });
 
-  result = sortRows(result);
+  result = sortData(result);
   filteredGuestRows = result;
 
   if (resetPage) {
     currentPage = 1;
   }
 
-  const paginatedRows = getPaginatedRows();
-  renderTable(paginatedRows);
+  renderTable(getCurrentPageRows());
   updatePaginationUI();
   updateSortUI();
 }
@@ -269,8 +264,6 @@ async function loadGuests() {
   }
 
   guestRows = data || [];
-  filteredGuestRows = [...guestRows];
-  currentPage = 1;
   applyFilters(true);
 }
 
@@ -370,6 +363,8 @@ if (logoutBtn) {
       guestRows = [];
       filteredGuestRows = [];
       currentPage = 1;
+      currentSortField = "tanggal";
+      currentSortDirection = "desc";
 
       if (adminCard) adminCard.style.display = "none";
       if (loginCard) loginCard.style.display = "block";
@@ -377,7 +372,6 @@ if (logoutBtn) {
 
       updatePaginationUI();
       updateSortUI();
-
       showMessage(loginMessage, "success", "Logout berhasil.");
     } catch (err) {
       console.error("Unexpected logout error:", err);
@@ -410,22 +404,19 @@ if (resetFilterBtn) {
     if (filterTanggal) filterTanggal.value = "";
     if (filterKeperluan) filterKeperluan.value = "";
 
-    currentSort = {
-      field: "tanggal",
-      direction: "desc",
-    };
-
+    currentSortField = "tanggal";
+    currentSortDirection = "desc";
     applyFilters(true);
   });
 }
 
 if (sortNamaBtn) {
   sortNamaBtn.addEventListener("click", () => {
-    if (currentSort.field === "nama") {
-      currentSort.direction = currentSort.direction === "asc" ? "desc" : "asc";
+    if (currentSortField === "nama") {
+      currentSortDirection = currentSortDirection === "asc" ? "desc" : "asc";
     } else {
-      currentSort.field = "nama";
-      currentSort.direction = "asc";
+      currentSortField = "nama";
+      currentSortDirection = "asc";
     }
 
     applyFilters(true);
@@ -434,11 +425,11 @@ if (sortNamaBtn) {
 
 if (sortTanggalBtn) {
   sortTanggalBtn.addEventListener("click", () => {
-    if (currentSort.field === "tanggal") {
-      currentSort.direction = currentSort.direction === "desc" ? "asc" : "desc";
+    if (currentSortField === "tanggal") {
+      currentSortDirection = currentSortDirection === "desc" ? "asc" : "desc";
     } else {
-      currentSort.field = "tanggal";
-      currentSort.direction = "desc";
+      currentSortField = "tanggal";
+      currentSortDirection = "desc";
     }
 
     applyFilters(true);
@@ -449,7 +440,7 @@ if (prevPageBtn) {
   prevPageBtn.addEventListener("click", () => {
     if (currentPage > 1) {
       currentPage -= 1;
-      renderTable(getPaginatedRows());
+      renderTable(getCurrentPageRows());
       updatePaginationUI();
     }
   });
@@ -460,7 +451,7 @@ if (nextPageBtn) {
     const totalPages = getTotalPages();
     if (currentPage < totalPages) {
       currentPage += 1;
-      renderTable(getPaginatedRows());
+      renderTable(getCurrentPageRows());
       updatePaginationUI();
     }
   });
