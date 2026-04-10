@@ -15,6 +15,10 @@ const logoutBtn = document.getElementById("logoutBtn");
 const refreshBtn = document.getElementById("refreshBtn");
 const searchInput = document.getElementById("searchInput");
 const resetFilterBtn = document.getElementById("resetFilterBtn");
+const filterTanggal = document.getElementById("filterTanggal");
+const filterInstansi = document.getElementById("filterInstansi");
+const filterTujuan = document.getElementById("filterTujuan");
+const filterKeperluan = document.getElementById("filterKeperluan");
 
 let guestRows = [];
 
@@ -64,14 +68,58 @@ function renderTable(rows) {
   `).join("");
 }
 
+function normalizeDate(dateString) {
+  if (!dateString) return "";
+  const d = new Date(dateString);
+
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
 function applySearch() {
   const keyword = searchInput.value.trim().toLowerCase();
+  const tanggal = filterTanggal ? filterTanggal.value : "";
+  const instansi = filterInstansi ? filterInstansi.value.trim().toLowerCase() : "";
+  const tujuan = filterTujuan ? filterTujuan.value.trim().toLowerCase() : "";
+  const keperluan = filterKeperluan ? filterKeperluan.value.trim().toLowerCase() : "";
 
   const filtered = guestRows.filter((row) => {
+    const namaRow = (row.nama_lengkap || "").toLowerCase();
+    const instansiRow = (row.instansi || "").toLowerCase();
+    const tujuanRow = (row.tujuan || "").toLowerCase();
+    const keperluanRow = (row.keperluan || "").toLowerCase();
+    const tanggalRow = normalizeDate(row.tanggal_kunjungan);
+
+    const matchKeyword =
+      !keyword ||
+      namaRow.includes(keyword) ||
+      instansiRow.includes(keyword) ||
+      tujuanRow.includes(keyword);
+
+    const matchTanggal =
+      !tanggal || tanggalRow === tanggal;
+
+    const matchInstansi =
+      !instansi || instansiRow.includes(instansi);
+
+    const matchTujuan =
+      !tujuan || tujuanRow.includes(tujuan);
+
+    const matchKeperluan =
+      !keperluan ||
+      keperluan === "semua keperluan" ||
+      keperluan === "semua" ||
+      keperluanRow === keperluan;
+
     return (
-      (row.nama_lengkap || "").toLowerCase().includes(keyword) ||
-      (row.instansi || "").toLowerCase().includes(keyword) ||
-      (row.tujuan || "").toLowerCase().includes(keyword)
+      matchKeyword &&
+      matchTanggal &&
+      matchInstansi &&
+      matchTujuan &&
+      matchKeperluan
     );
   });
 
@@ -192,6 +240,21 @@ refreshBtn.addEventListener("click", async () => {
 });
 
 searchInput.addEventListener("input", applySearch);
+if (filterTanggal) {
+  filterTanggal.addEventListener("change", applySearch);
+}
+
+if (filterInstansi) {
+  filterInstansi.addEventListener("input", applySearch);
+}
+
+if (filterTujuan) {
+  filterTujuan.addEventListener("input", applySearch);
+}
+
+if (filterKeperluan) {
+  filterKeperluan.addEventListener("change", applySearch);
+}
 
 guestTableBody.addEventListener("click", async (event) => {
   const button = event.target.closest(".small-btn");
@@ -269,10 +332,11 @@ exportBtn.addEventListener("click", () => {
 
 resetFilterBtn.addEventListener("click", () => {
   searchInput.value = "";
-  filterTanggal.value = "";
-  filterInstansi.value = "";
-  filterTujuan.value = "";
-  filterKeperluan.value = "";
+
+  if (filterTanggal) filterTanggal.value = "";
+  if (filterInstansi) filterInstansi.value = "";
+  if (filterTujuan) filterTujuan.value = "";
+  if (filterKeperluan) filterKeperluan.value = "";
 
   applySearch();
 });
