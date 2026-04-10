@@ -16,10 +16,7 @@ const refreshBtn = document.getElementById("refreshBtn");
 const searchInput = document.getElementById("searchInput");
 const resetFilterBtn = document.getElementById("resetFilterBtn");
 const exportBtn = document.getElementById("exportBtn");
-
 const filterTanggal = document.getElementById("filterTanggal");
-const filterInstansi = document.getElementById("filterInstansi");
-const filterTujuan = document.getElementById("filterTujuan");
 const filterKeperluan = document.getElementById("filterKeperluan");
 
 let guestRows = [];
@@ -39,23 +36,26 @@ function resetMessage(el) {
 
 function formatDate(dateString) {
   if (!dateString) return "-";
-  return new Date(dateString).toLocaleDateString("id-ID");
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) return "-";
+  return date.toLocaleDateString("id-ID");
 }
 
 function formatDateTime(dateString) {
   if (!dateString) return "-";
-  return new Date(dateString).toLocaleString("id-ID");
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) return "-";
+  return date.toLocaleString("id-ID");
 }
 
 function normalizeDate(dateString) {
   if (!dateString) return "";
-  const d = new Date(dateString);
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) return "";
 
-  if (isNaN(d.getTime())) return "";
-
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
 
   return `${year}-${month}-${day}`;
 }
@@ -66,37 +66,33 @@ function renderTable(rows) {
   if (!rows.length) {
     guestTableBody.innerHTML = `
       <tr>
-        <td colspan="10" class="empty-state">Belum ada data tamu.</td>
+        <td colspan="10" class="empty-state">Tidak ada data yang sesuai filter.</td>
       </tr>
     `;
     return;
   }
 
   guestTableBody.innerHTML = rows
-    .map(
-      (row, index) => `
-    <tr>
-      <td>${index + 1}</td>
-      <td>${row.nama_lengkap ?? "-"}</td>
-      <td>${row.instansi ?? "-"}</td>
-      <td>${row.no_hp ?? "-"}</td>
-      <td>${row.email ?? "-"}</td>
-      <td>${row.tujuan ?? "-"}</td>
-      <td>${row.keperluan ?? "-"}</td>
-      <td>${formatDate(row.tanggal_kunjungan)}</td>
-      <td>${formatDateTime(row.created_at)}</td>
-      <td><button class="small-btn" data-id="${row.id}">Hapus</button></td>
-    </tr>
-  `
-    )
+    .map((row, index) => `
+      <tr>
+        <td>${index + 1}</td>
+        <td>${row.nama_lengkap ?? "-"}</td>
+        <td>${row.instansi ?? "-"}</td>
+        <td>${row.no_hp ?? "-"}</td>
+        <td>${row.email ?? "-"}</td>
+        <td>${row.tujuan ?? "-"}</td>
+        <td>${row.keperluan ?? "-"}</td>
+        <td>${formatDate(row.tanggal_kunjungan)}</td>
+        <td>${formatDateTime(row.created_at)}</td>
+        <td><button class="small-btn" data-id="${row.id}" type="button">Hapus</button></td>
+      </tr>
+    `)
     .join("");
 }
 
-function applySearch() {
+function applyFilters() {
   const keyword = searchInput ? searchInput.value.trim().toLowerCase() : "";
   const tanggal = filterTanggal ? filterTanggal.value : "";
-  const instansi = filterInstansi ? filterInstansi.value.trim().toLowerCase() : "";
-  const tujuan = filterTujuan ? filterTujuan.value.trim().toLowerCase() : "";
   const keperluan = filterKeperluan ? filterKeperluan.value.trim().toLowerCase() : "";
 
   filteredGuestRows = guestRows.filter((row) => {
@@ -113,21 +109,12 @@ function applySearch() {
       tujuanRow.includes(keyword);
 
     const matchTanggal = !tanggal || tanggalRow === tanggal;
-    const matchInstansi = !instansi || instansiRow.includes(instansi);
-    const matchTujuan = !tujuan || tujuanRow.includes(tujuan);
+
     const matchKeperluan =
       !keperluan ||
-      keperluan === "semua keperluan" ||
-      keperluan === "semua" ||
       keperluanRow === keperluan;
 
-    return (
-      matchKeyword &&
-      matchTanggal &&
-      matchInstansi &&
-      matchTujuan &&
-      matchKeperluan
-    );
+    return matchKeyword && matchTanggal && matchKeperluan;
   });
 
   renderTable(filteredGuestRows);
@@ -150,7 +137,7 @@ async function loadGuests() {
     .order("created_at", { ascending: false });
 
   if (error) {
-    console.error(error);
+    console.error("Load tamu error:", error);
     showMessage(adminMessage, "error", "Gagal memuat data tamu.");
 
     if (guestTableBody) {
@@ -165,7 +152,7 @@ async function loadGuests() {
 
   guestRows = data || [];
   filteredGuestRows = [...guestRows];
-  applySearch();
+  applyFilters();
 }
 
 async function checkSession() {
@@ -208,26 +195,35 @@ if (loginForm) {
     const email = document.getElementById("adminEmail")?.value.trim() || "";
     const password = document.getElementById("adminPassword")?.value || "";
 
-    loginBtn.disabled = true;
-    loginBtn.textContent = "Masuk...";
-
-    const { error } = await supabaseClient.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    if (error) {
-      console.error(error);
-      showMessage(loginMessage, "error", "Login gagal. Periksa email dan password.");
-      loginBtn.disabled = false;
-      loginBtn.textContent = "Login";
+    if (!email || !password) {
+      showMessage(loginMessage, "error", "Email dan password wajib diisi.");
       return;
     }
 
-    loginBtn.disabled = false;
-    loginBtn.textContent = "Login";
-    loginForm.reset();
-    await checkSession();
+    loginBtn.disabled = true;
+    loginBtn.textContent = "Masuk...";
+
+    try {
+      const { error } = await supabaseClient.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        console.error("Login error:", error);
+        showMessage(loginMessage, "error", "Login gagal. Periksa email dan password.");
+        return;
+      }
+
+      loginForm.reset();
+      await checkSession();
+    } catch (err) {
+      console.error("Unexpected login error:", err);
+      showMessage(loginMessage, "error", "Terjadi kesalahan saat login.");
+    } finally {
+      loginBtn.disabled = false;
+      loginBtn.textContent = "Login";
+    }
   });
 }
 
@@ -235,35 +231,31 @@ if (logoutBtn) {
   logoutBtn.addEventListener("click", async () => {
     resetMessage(adminMessage);
 
-    guestRows = [];
-    filteredGuestRows = [];
+    try {
+      const { error } = await supabaseClient.auth.signOut();
 
-    if (guestTableBody) {
-      guestTableBody.innerHTML = `
-        <tr>
-          <td colspan="10" class="empty-state">Anda telah logout.</td>
-        </tr>
-      `;
+      if (error) {
+        console.error("Logout error:", error);
+        showMessage(adminMessage, "error", "Logout gagal. Silakan coba lagi.");
+        return;
+      }
+
+      if (searchInput) searchInput.value = "";
+      if (filterTanggal) filterTanggal.value = "";
+      if (filterKeperluan) filterKeperluan.value = "";
+
+      guestRows = [];
+      filteredGuestRows = [];
+
+      if (adminCard) adminCard.style.display = "none";
+      if (loginCard) loginCard.style.display = "block";
+      if (adminEmailLabel) adminEmailLabel.textContent = "";
+
+      showMessage(loginMessage, "success", "Logout berhasil.");
+    } catch (err) {
+      console.error("Unexpected logout error:", err);
+      showMessage(adminMessage, "error", "Terjadi kesalahan saat logout.");
     }
-
-    const { error } = await supabaseClient.auth.signOut();
-
-    if (error) {
-      console.error("Logout gagal:", error);
-      showMessage(adminMessage, "error", "Logout gagal. Silakan coba lagi.");
-      return;
-    }
-
-    if (adminCard) adminCard.style.display = "none";
-    if (loginCard) loginCard.style.display = "block";
-    if (adminEmailLabel) adminEmailLabel.textContent = "";
-    if (searchInput) searchInput.value = "";
-    if (filterTanggal) filterTanggal.value = "";
-    if (filterInstansi) filterInstansi.value = "";
-    if (filterTujuan) filterTujuan.value = "";
-    if (filterKeperluan) filterKeperluan.value = "";
-
-    showMessage(loginMessage, "success", "Logout berhasil.");
   });
 }
 
@@ -274,34 +266,24 @@ if (refreshBtn) {
 }
 
 if (searchInput) {
-  searchInput.addEventListener("input", applySearch);
+  searchInput.addEventListener("input", applyFilters);
 }
 
 if (filterTanggal) {
-  filterTanggal.addEventListener("change", applySearch);
-}
-
-if (filterInstansi) {
-  filterInstansi.addEventListener("input", applySearch);
-}
-
-if (filterTujuan) {
-  filterTujuan.addEventListener("input", applySearch);
+  filterTanggal.addEventListener("change", applyFilters);
 }
 
 if (filterKeperluan) {
-  filterKeperluan.addEventListener("change", applySearch);
+  filterKeperluan.addEventListener("change", applyFilters);
 }
 
 if (resetFilterBtn) {
   resetFilterBtn.addEventListener("click", () => {
     if (searchInput) searchInput.value = "";
     if (filterTanggal) filterTanggal.value = "";
-    if (filterInstansi) filterInstansi.value = "";
-    if (filterTujuan) filterTujuan.value = "";
     if (filterKeperluan) filterKeperluan.value = "";
 
-    applySearch();
+    applyFilters();
   });
 }
 
@@ -314,16 +296,24 @@ if (guestTableBody) {
     const confirmed = window.confirm("Yakin ingin menghapus data ini?");
     if (!confirmed) return;
 
-    const { error } = await supabaseClient.from("tamu").delete().eq("id", id);
+    try {
+      const { error } = await supabaseClient
+        .from("tamu")
+        .delete()
+        .eq("id", id);
 
-    if (error) {
-      console.error(error);
-      showMessage(adminMessage, "error", "Gagal menghapus data.");
-      return;
+      if (error) {
+        console.error("Delete error:", error);
+        showMessage(adminMessage, "error", "Gagal menghapus data.");
+        return;
+      }
+
+      showMessage(adminMessage, "success", "Data berhasil dihapus.");
+      await loadGuests();
+    } catch (err) {
+      console.error("Unexpected delete error:", err);
+      showMessage(adminMessage, "error", "Terjadi kesalahan saat menghapus data.");
     }
-
-    showMessage(adminMessage, "success", "Data berhasil dihapus.");
-    await loadGuests();
   });
 }
 
@@ -345,9 +335,6 @@ supabaseClient.auth.onAuthStateChange((event) => {
         </tr>
       `;
     }
-
-    showMessage(loginMessage, "success", "Logout berhasil.");
-    return;
   }
 
   if (event === "SIGNED_IN") {
@@ -375,6 +362,19 @@ if (exportBtn) {
     }));
 
     const worksheet = XLSX.utils.json_to_sheet(dataExport);
+
+    worksheet["!cols"] = [
+      { wch: 5 },
+      { wch: 28 },
+      { wch: 22 },
+      { wch: 16 },
+      { wch: 28 },
+      { wch: 26 },
+      { wch: 28 },
+      { wch: 18 },
+      { wch: 22 }
+    ];
+
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Data Tamu");
 
