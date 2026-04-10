@@ -21,6 +21,7 @@ const filterTujuan = document.getElementById("filterTujuan");
 const filterKeperluan = document.getElementById("filterKeperluan");
 
 let guestRows = [];
+let filteredGuestRows = [];
 
 function showMessage(el, type, text) {
   el.className = `form-message ${type}`;
@@ -123,7 +124,7 @@ function applySearch() {
     );
   });
 
-  renderTable(filtered);
+  renderTable(filteredGuestRows);
 }
 
 async function loadGuests() {
@@ -306,28 +307,31 @@ checkSession();
 const exportBtn = document.getElementById("exportBtn");
 
 exportBtn.addEventListener("click", () => {
-  if (!guestRows.length) {
-    alert("Tidak ada data untuk diexport.");
+  const exportBtn = document.getElementById("exportBtn");
+
+exportBtn.addEventListener("click", () => {
+  if (!filteredGuestRows.length) {
+    alert("Tidak ada data hasil filter untuk diexport.");
     return;
   }
 
-  const dataExport = guestRows.map((row, index) => ({
+  const dataExport = filteredGuestRows.map((row, index) => ({
     No: index + 1,
-    "Nama Lengkap": row.nama_lengkap,
-    Instansi: row.instansi,
-    "No HP": row.no_hp,
-    Email: row.email,
-    "Tujuan / PIC": row.tujuan,
-    Keperluan: row.keperluan,
-    Tanggal: formatDate(row.tanggal_kunjungan),
-    "Dibuat": formatDateTime(row.created_at),
+    "Nama Lengkap": row.nama_lengkap || "-",
+    Instansi: row.instansi || "-",
+    "No HP": row.no_hp || "-",
+    Email: row.email || "-",
+    "Tujuan / PIC": row.tujuan || "-",
+    Keperluan: row.keperluan || "-",
+    "Tanggal Kunjungan": formatDate(row.tanggal_kunjungan),
+    "Dibuat Pada": formatDateTime(row.created_at),
   }));
 
   const worksheet = XLSX.utils.json_to_sheet(dataExport);
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, worksheet, "Data Tamu");
 
-  XLSX.writeFile(workbook, "data_tamu.xlsx");
+  XLSX.writeFile(workbook, "data_tamu_filtered.xlsx");
 });
 
 resetFilterBtn.addEventListener("click", () => {
