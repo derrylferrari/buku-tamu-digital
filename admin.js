@@ -16,6 +16,8 @@ const refreshBtn = document.getElementById("refreshBtn");
 const searchInput = document.getElementById("searchInput");
 const resetFilterBtn = document.getElementById("resetFilterBtn");
 const exportBtn = document.getElementById("exportBtn");
+const exportPdfBtn = document.getElementById("exportPdfBtn");
+const printBtn = document.getElementById("printBtn");
 const filterTanggal = document.getElementById("filterTanggal");
 const filterKeperluan = document.getElementById("filterKeperluan");
 
@@ -29,6 +31,28 @@ const prevPageBtn = document.getElementById("prevPageBtn");
 const nextPageBtn = document.getElementById("nextPageBtn");
 const pageIndicator = document.getElementById("pageIndicator");
 const paginationInfo = document.getElementById("paginationInfo");
+
+const statTotal = document.getElementById("statTotal");
+const statToday = document.getElementById("statToday");
+const statMonth = document.getElementById("statMonth");
+const statTopPurpose = document.getElementById("statTopPurpose");
+const statTopPurposeCount = document.getElementById("statTopPurposeCount");
+
+const editModal = document.getElementById("editModal");
+const closeEditModalBtn = document.getElementById("closeEditModalBtn");
+const cancelEditBtn = document.getElementById("cancelEditBtn");
+const editGuestForm = document.getElementById("editGuestForm");
+const editMessage = document.getElementById("editMessage");
+const saveEditBtn = document.getElementById("saveEditBtn");
+
+const editGuestId = document.getElementById("editGuestId");
+const editNamaLengkap = document.getElementById("editNamaLengkap");
+const editInstansi = document.getElementById("editInstansi");
+const editNoHp = document.getElementById("editNoHp");
+const editEmail = document.getElementById("editEmail");
+const editTujuan = document.getElementById("editTujuan");
+const editKeperluan = document.getElementById("editKeperluan");
+const editTanggalKunjungan = document.getElementById("editTanggalKunjungan");
 
 let guestRows = [];
 let filteredGuestRows = [];
@@ -89,7 +113,6 @@ function sortData(rows) {
     if (currentSortField === "nama") {
       const aName = (a.nama_lengkap || "").toLowerCase().trim();
       const bName = (b.nama_lengkap || "").toLowerCase().trim();
-
       const comparison = aName.localeCompare(bName, "id", { sensitivity: "base" });
       return currentSortDirection === "asc" ? comparison : -comparison;
     }
@@ -97,7 +120,6 @@ function sortData(rows) {
     const aTime = getSortTimestamp(a);
     const bTime = getSortTimestamp(b);
     const comparison = aTime - bTime;
-
     return currentSortDirection === "asc" ? comparison : -comparison;
   });
 
@@ -167,6 +189,58 @@ function updatePaginationUI() {
   if (nextPageBtn) nextPageBtn.disabled = currentPage >= totalPages;
 }
 
+function updateStats(rows) {
+  if (!rows) rows = [];
+
+  const total = rows.length;
+  const today = normalizeDate(new Date());
+  const now = new Date();
+  const thisMonth = now.getMonth();
+  const thisYear = now.getFullYear();
+
+  let todayCount = 0;
+  let monthCount = 0;
+  const purposeCounter = {};
+
+  rows.forEach((row) => {
+    const rowDateString = row.tanggal_kunjungan || row.created_at;
+    const rowDate = new Date(rowDateString);
+    const rowNormalized = normalizeDate(rowDateString);
+
+    if (rowNormalized === today) {
+      todayCount += 1;
+    }
+
+    if (!isNaN(rowDate.getTime())) {
+      if (rowDate.getMonth() === thisMonth && rowDate.getFullYear() === thisYear) {
+        monthCount += 1;
+      }
+    }
+
+    const purpose = (row.keperluan || "Tidak disebutkan").trim();
+    purposeCounter[purpose] = (purposeCounter[purpose] || 0) + 1;
+  });
+
+  let topPurpose = "-";
+  let topPurposeValue = 0;
+
+  Object.entries(purposeCounter).forEach(([purpose, count]) => {
+    if (count > topPurposeValue) {
+      topPurpose = purpose;
+      topPurposeValue = count;
+    }
+  });
+
+  if (statTotal) statTotal.textContent = String(total);
+  if (statToday) statToday.textContent = String(todayCount);
+  if (statMonth) statMonth.textContent = String(monthCount);
+  if (statTopPurpose) statTopPurpose.textContent = topPurpose;
+  if (statTopPurposeCount) {
+    statTopPurposeCount.textContent =
+      topPurposeValue > 0 ? `${topPurposeValue} kunjungan` : "Belum ada data";
+  }
+}
+
 function renderTable(rows) {
   if (!guestTableBody) return;
 
@@ -192,7 +266,12 @@ function renderTable(rows) {
       <td>${row.keperluan ?? "-"}</td>
       <td>${formatDate(row.tanggal_kunjungan)}</td>
       <td>${formatDateTime(row.created_at)}</td>
-      <td><button class="small-btn" data-id="${row.id}" type="button">Hapus</button></td>
+      <td>
+        <div class="action-group">
+          <button class="edit-btn" data-action="edit" data-id="${row.id}" type="button">Edit</button>
+          <button class="small-btn" data-action="delete" data-id="${row.id}" type="button">Hapus</button>
+        </div>
+      </td>
     </tr>
   `).join("");
 }
@@ -228,6 +307,7 @@ function applyFilters(resetPage = true) {
     currentPage = 1;
   }
 
+  updateStats(filteredGuestRows);
   renderTable(getCurrentPageRows());
   updatePaginationUI();
   updateSortUI();
@@ -289,6 +369,7 @@ async function checkSession() {
     guestRows = [];
     filteredGuestRows = [];
     currentPage = 1;
+    updateStats([]);
 
     if (guestTableBody) {
       guestTableBody.innerHTML = `
@@ -301,6 +382,32 @@ async function checkSession() {
     updatePaginationUI();
     updateSortUI();
   }
+}
+
+function openEditModal(row) {
+  if (!row || !editModal) return;
+
+  resetMessage(editMessage);
+
+  editGuestId.value = row.id || "";
+  editNamaLengkap.value = row.nama_lengkap || "";
+  editInstansi.value = row.instansi || "";
+  editNoHp.value = row.no_hp || "";
+  editEmail.value = row.email || "";
+  editTujuan.value = row.tujuan || "";
+  editKeperluan.value = row.keperluan || "";
+  editTanggalKunjungan.value = normalizeDate(row.tanggal_kunjungan || row.created_at);
+
+  editModal.classList.add("show");
+  editModal.setAttribute("aria-hidden", "false");
+}
+
+function closeEditModal() {
+  if (!editModal) return;
+  editModal.classList.remove("show");
+  editModal.setAttribute("aria-hidden", "true");
+  if (editGuestForm) editGuestForm.reset();
+  resetMessage(editMessage);
 }
 
 if (loginForm) {
@@ -365,6 +472,7 @@ if (logoutBtn) {
       currentPage = 1;
       currentSortField = "tanggal";
       currentSortDirection = "desc";
+      updateStats([]);
 
       if (adminCard) adminCard.style.display = "none";
       if (loginCard) loginCard.style.display = "block";
@@ -459,30 +567,115 @@ if (nextPageBtn) {
 
 if (guestTableBody) {
   guestTableBody.addEventListener("click", async (event) => {
-    const button = event.target.closest(".small-btn");
+    const button = event.target.closest("[data-action]");
     if (!button) return;
 
+    const action = button.dataset.action;
     const id = button.dataset.id;
-    const confirmed = window.confirm("Yakin ingin menghapus data ini?");
-    if (!confirmed) return;
+    const row = guestRows.find((item) => String(item.id) === String(id));
+
+    if (action === "edit") {
+      openEditModal(row);
+      return;
+    }
+
+    if (action === "delete") {
+      const confirmed = window.confirm("Yakin ingin menghapus data ini?");
+      if (!confirmed) return;
+
+      try {
+        const { error } = await supabaseClient
+          .from("tamu")
+          .delete()
+          .eq("id", id);
+
+        if (error) {
+          console.error("Delete error:", error);
+          showMessage(adminMessage, "error", "Gagal menghapus data.");
+          return;
+        }
+
+        showMessage(adminMessage, "success", "Data berhasil dihapus.");
+        await loadGuests();
+      } catch (err) {
+        console.error("Unexpected delete error:", err);
+        showMessage(adminMessage, "error", "Terjadi kesalahan saat menghapus data.");
+      }
+    }
+  });
+}
+
+if (closeEditModalBtn) {
+  closeEditModalBtn.addEventListener("click", closeEditModal);
+}
+
+if (cancelEditBtn) {
+  cancelEditBtn.addEventListener("click", closeEditModal);
+}
+
+if (editModal) {
+  editModal.addEventListener("click", (event) => {
+    if (event.target === editModal) {
+      closeEditModal();
+    }
+  });
+}
+
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && editModal?.classList.contains("show")) {
+    closeEditModal();
+  }
+});
+
+if (editGuestForm) {
+  editGuestForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    resetMessage(editMessage);
+
+    const id = editGuestId.value;
+
+    const payload = {
+      nama_lengkap: editNamaLengkap.value.trim(),
+      instansi: editInstansi.value.trim(),
+      no_hp: editNoHp.value.trim(),
+      email: editEmail.value.trim(),
+      tujuan: editTujuan.value.trim(),
+      keperluan: editKeperluan.value,
+      tanggal_kunjungan: editTanggalKunjungan.value || null,
+    };
+
+    if (!payload.nama_lengkap) {
+      showMessage(editMessage, "error", "Nama lengkap wajib diisi.");
+      return;
+    }
+
+    saveEditBtn.disabled = true;
+    saveEditBtn.textContent = "Menyimpan...";
 
     try {
       const { error } = await supabaseClient
         .from("tamu")
-        .delete()
+        .update(payload)
         .eq("id", id);
 
       if (error) {
-        console.error("Delete error:", error);
-        showMessage(adminMessage, "error", "Gagal menghapus data.");
+        console.error("Update error:", error);
+        showMessage(editMessage, "error", "Gagal menyimpan perubahan.");
         return;
       }
 
-      showMessage(adminMessage, "success", "Data berhasil dihapus.");
+      showMessage(editMessage, "success", "Perubahan berhasil disimpan.");
       await loadGuests();
+
+      setTimeout(() => {
+        closeEditModal();
+      }, 600);
     } catch (err) {
-      console.error("Unexpected delete error:", err);
-      showMessage(adminMessage, "error", "Terjadi kesalahan saat menghapus data.");
+      console.error("Unexpected update error:", err);
+      showMessage(editMessage, "error", "Terjadi kesalahan saat menyimpan.");
+    } finally {
+      saveEditBtn.disabled = false;
+      saveEditBtn.textContent = "Simpan Perubahan";
     }
   });
 }
@@ -498,6 +691,7 @@ supabaseClient.auth.onAuthStateChange((event) => {
     guestRows = [];
     filteredGuestRows = [];
     currentPage = 1;
+    updateStats([]);
 
     if (guestTableBody) {
       guestTableBody.innerHTML = `
@@ -559,6 +753,164 @@ if (exportBtn) {
   });
 }
 
+if (exportPdfBtn) {
+  exportPdfBtn.addEventListener("click", () => {
+    if (!filteredGuestRows.length) {
+      alert("Tidak ada data hasil filter untuk diexport ke PDF.");
+      return;
+    }
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF("l", "mm", "a4");
+
+    const today = new Date();
+    const fileDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+
+    doc.setFontSize(16);
+    doc.text("Laporan Data Buku Tamu Digital", 14, 14);
+
+    doc.setFontSize(10);
+    doc.text(`Tanggal export: ${fileDate}`, 14, 20);
+    doc.text(`Total data: ${filteredGuestRows.length}`, 14, 26);
+
+    const body = filteredGuestRows.map((row, index) => [
+      index + 1,
+      row.nama_lengkap || "-",
+      row.instansi || "-",
+      row.no_hp || "-",
+      row.email || "-",
+      row.tujuan || "-",
+      row.keperluan || "-",
+      formatDate(row.tanggal_kunjungan),
+      formatDateTime(row.created_at),
+    ]);
+
+    doc.autoTable({
+      startY: 32,
+      head: [[
+        "No",
+        "Nama Lengkap",
+        "Instansi",
+        "No HP",
+        "Email",
+        "Tujuan / PIC",
+        "Keperluan",
+        "Tanggal Kunjungan",
+        "Dibuat Pada"
+      ]],
+      body,
+      styles: {
+        fontSize: 8,
+        cellPadding: 2
+      },
+      headStyles: {
+        fillColor: [37, 99, 235]
+      }
+    });
+
+    doc.save(`data_tamu_filtered_${fileDate}.pdf`);
+  });
+}
+
+if (printBtn) {
+  printBtn.addEventListener("click", () => {
+    if (!filteredGuestRows.length) {
+      alert("Tidak ada data untuk dicetak.");
+      return;
+    }
+
+    const printWindow = window.open("", "_blank", "width=1400,height=900");
+
+    if (!printWindow) {
+      alert("Popup diblokir browser. Izinkan popup lalu coba lagi.");
+      return;
+    }
+
+    const rowsHtml = filteredGuestRows.map((row, index) => `
+      <tr>
+        <td>${index + 1}</td>
+        <td>${row.nama_lengkap || "-"}</td>
+        <td>${row.instansi || "-"}</td>
+        <td>${row.no_hp || "-"}</td>
+        <td>${row.email || "-"}</td>
+        <td>${row.tujuan || "-"}</td>
+        <td>${row.keperluan || "-"}</td>
+        <td>${formatDate(row.tanggal_kunjungan)}</td>
+        <td>${formatDateTime(row.created_at)}</td>
+      </tr>
+    `).join("");
+
+    const today = new Date();
+    const fileDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Cetak Data Buku Tamu</title>
+          <style>
+            body {
+              font-family: Arial, sans-serif;
+              padding: 24px;
+              color: #111827;
+            }
+            h1 {
+              margin: 0 0 8px;
+              font-size: 22px;
+            }
+            .meta {
+              margin-bottom: 18px;
+              color: #4b5563;
+              font-size: 14px;
+            }
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              font-size: 12px;
+            }
+            th, td {
+              border: 1px solid #d1d5db;
+              padding: 8px;
+              text-align: left;
+              vertical-align: top;
+            }
+            th {
+              background: #eff6ff;
+            }
+          </style>
+        </head>
+        <body>
+          <h1>Laporan Data Buku Tamu Digital</h1>
+          <div class="meta">
+            Tanggal cetak: ${fileDate}<br>
+            Total data: ${filteredGuestRows.length}
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>No</th>
+                <th>Nama Lengkap</th>
+                <th>Instansi</th>
+                <th>No HP</th>
+                <th>Email</th>
+                <th>Tujuan / PIC</th>
+                <th>Keperluan</th>
+                <th>Tanggal Kunjungan</th>
+                <th>Dibuat Pada</th>
+              </tr>
+            </thead>
+            <tbody>${rowsHtml}</tbody>
+          </table>
+        </body>
+      </html>
+    `);
+
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.print();
+  });
+}
+
+updateStats([]);
 updateSortUI();
 updatePaginationUI();
 checkSession();
