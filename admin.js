@@ -19,8 +19,26 @@ const exportBtn = document.getElementById("exportBtn");
 const filterTanggal = document.getElementById("filterTanggal");
 const filterKeperluan = document.getElementById("filterKeperluan");
 
+const sortNamaBtn = document.getElementById("sortNamaBtn");
+const sortTanggalBtn = document.getElementById("sortTanggalBtn");
+const sortNamaIcon = document.getElementById("sortNamaIcon");
+const sortTanggalIcon = document.getElementById("sortTanggalIcon");
+const sortStatus = document.getElementById("sortStatus");
+
+const prevPageBtn = document.getElementById("prevPageBtn");
+const nextPageBtn = document.getElementById("nextPageBtn");
+const pageIndicator = document.getElementById("pageIndicator");
+const paginationInfo = document.getElementById("paginationInfo");
+
 let guestRows = [];
 let filteredGuestRows = [];
+
+const ITEMS_PER_PAGE = 50;
+let currentPage = 1;
+let currentSort = {
+  field: "tanggal",
+  direction: "desc",
+};
 
 function showMessage(el, type, text) {
   if (!el) return;
@@ -60,6 +78,97 @@ function normalizeDate(dateString) {
   return `${year}-${month}-${day}`;
 }
 
+function compareStrings(a, b) {
+  return a.localeCompare(b, "id", { sensitivity: "base" });
+}
+
+function sortRows(rows) {
+  const sorted = [...rows];
+
+  sorted.sort((a, b) => {
+    if (currentSort.field === "nama") {
+      const namaA = (a.nama_lengkap || "").trim();
+      const namaB = (b.nama_lengkap || "").trim();
+      const result = compareStrings(namaA, namaB);
+      return currentSort.direction === "asc" ? result : -result;
+    }
+
+    const tanggalA = new Date(a.tanggal_kunjungan || a.created_at || 0).getTime();
+    const tanggalB = new Date(b.tanggal_kunjungan || b.created_at || 0).getTime();
+    const result = tanggalA - tanggalB;
+    return currentSort.direction === "asc" ? result : -result;
+  });
+
+  return sorted;
+}
+
+function updateSortUI() {
+  if (sortNamaIcon) sortNamaIcon.textContent = "↕";
+  if (sortTanggalIcon) sortTanggalIcon.textContent = "↕";
+
+  if (currentSort.field === "nama") {
+    if (sortNamaIcon) {
+      sortNamaIcon.textContent = currentSort.direction === "asc" ? "A-Z" : "Z-A";
+    }
+    if (sortStatus) {
+      sortStatus.textContent =
+        currentSort.direction === "asc"
+          ? "Urutan: Nama A-Z"
+          : "Urutan: Nama Z-A";
+    }
+  }
+
+  if (currentSort.field === "tanggal") {
+    if (sortTanggalIcon) {
+      sortTanggalIcon.textContent = currentSort.direction === "desc" ? "↓" : "↑";
+    }
+    if (sortStatus) {
+      sortStatus.textContent =
+        currentSort.direction === "desc"
+          ? "Urutan: Tanggal terbaru"
+          : "Urutan: Tanggal terlama";
+    }
+  }
+}
+
+function getTotalPages() {
+  return Math.max(1, Math.ceil(filteredGuestRows.length / ITEMS_PER_PAGE));
+}
+
+function getPaginatedRows() {
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const endIndex = startIndex + ITEMS_PER_PAGE;
+  return filteredGuestRows.slice(startIndex, endIndex);
+}
+
+function updatePaginationUI() {
+  const totalItems = filteredGuestRows.length;
+  const totalPages = getTotalPages();
+
+  if (currentPage > totalPages) {
+    currentPage = totalPages;
+  }
+
+  const startItem = totalItems === 0 ? 0 : (currentPage - 1) * ITEMS_PER_PAGE + 1;
+  const endItem = totalItems === 0 ? 0 : Math.min(currentPage * ITEMS_PER_PAGE, totalItems);
+
+  if (paginationInfo) {
+    paginationInfo.textContent = `Menampilkan ${startItem} - ${endItem} dari ${totalItems} data`;
+  }
+
+  if (pageIndicator) {
+    pageIndicator.textContent = `Halaman ${currentPage} / ${totalPages}`;
+  }
+
+  if (prevPageBtn) {
+    prevPageBtn.disabled = currentPage <= 1;
+  }
+
+  if (nextPageBtn) {
+    nextPageBtn.disabled = currentPage >= totalPages;
+  }
+}
+
 function renderTable(rows) {
   if (!guestTableBody) return;
 
@@ -72,10 +181,12 @@ function renderTable(rows) {
     return;
   }
 
+  const startNumber = (currentPage - 1) * ITEMS_PER_PAGE;
+
   guestTableBody.innerHTML = rows
     .map((row, index) => `
       <tr>
-        <td>${index + 1}</td>
+        <td>${startNumber + index + 1}</td>
         <td>${row.nama_lengkap ?? "-"}</td>
         <td>${row.instansi ?? "-"}</td>
         <td>${row.no_hp ?? "-"}</td>
@@ -90,12 +201,12 @@ function renderTable(rows) {
     .join("");
 }
 
-function applyFilters() {
+function applyFilters(resetPage = true) {
   const keyword = searchInput ? searchInput.value.trim().toLowerCase() : "";
   const tanggal = filterTanggal ? filterTanggal.value : "";
   const keperluan = filterKeperluan ? filterKeperluan.value.trim().toLowerCase() : "";
 
-  filteredGuestRows = guestRows.filter((row) => {
+  let result = guestRows.filter((row) => {
     const namaRow = (row.nama_lengkap || "").toLowerCase();
     const instansiRow = (row.instansi || "").toLowerCase();
     const tujuanRow = (row.tujuan || "").toLowerCase();
@@ -109,15 +220,22 @@ function applyFilters() {
       tujuanRow.includes(keyword);
 
     const matchTanggal = !tanggal || tanggalRow === tanggal;
-
-    const matchKeperluan =
-      !keperluan ||
-      keperluanRow === keperluan;
+    const matchKeperluan = !keperluan || keperluanRow === keperluan;
 
     return matchKeyword && matchTanggal && matchKeperluan;
   });
 
-  renderTable(filteredGuestRows);
+  result = sortRows(result);
+  filteredGuestRows = result;
+
+  if (resetPage) {
+    currentPage = 1;
+  }
+
+  const paginatedRows = getPaginatedRows();
+  renderTable(paginatedRows);
+  updatePaginationUI();
+  updateSortUI();
 }
 
 async function loadGuests() {
@@ -152,7 +270,8 @@ async function loadGuests() {
 
   guestRows = data || [];
   filteredGuestRows = [...guestRows];
-  applyFilters();
+  currentPage = 1;
+  applyFilters(true);
 }
 
 async function checkSession() {
@@ -176,6 +295,7 @@ async function checkSession() {
 
     guestRows = [];
     filteredGuestRows = [];
+    currentPage = 1;
 
     if (guestTableBody) {
       guestTableBody.innerHTML = `
@@ -184,6 +304,9 @@ async function checkSession() {
         </tr>
       `;
     }
+
+    updatePaginationUI();
+    updateSortUI();
   }
 }
 
@@ -246,10 +369,14 @@ if (logoutBtn) {
 
       guestRows = [];
       filteredGuestRows = [];
+      currentPage = 1;
 
       if (adminCard) adminCard.style.display = "none";
       if (loginCard) loginCard.style.display = "block";
       if (adminEmailLabel) adminEmailLabel.textContent = "";
+
+      updatePaginationUI();
+      updateSortUI();
 
       showMessage(loginMessage, "success", "Logout berhasil.");
     } catch (err) {
@@ -266,15 +393,15 @@ if (refreshBtn) {
 }
 
 if (searchInput) {
-  searchInput.addEventListener("input", applyFilters);
+  searchInput.addEventListener("input", () => applyFilters(true));
 }
 
 if (filterTanggal) {
-  filterTanggal.addEventListener("change", applyFilters);
+  filterTanggal.addEventListener("change", () => applyFilters(true));
 }
 
 if (filterKeperluan) {
-  filterKeperluan.addEventListener("change", applyFilters);
+  filterKeperluan.addEventListener("change", () => applyFilters(true));
 }
 
 if (resetFilterBtn) {
@@ -283,7 +410,59 @@ if (resetFilterBtn) {
     if (filterTanggal) filterTanggal.value = "";
     if (filterKeperluan) filterKeperluan.value = "";
 
-    applyFilters();
+    currentSort = {
+      field: "tanggal",
+      direction: "desc",
+    };
+
+    applyFilters(true);
+  });
+}
+
+if (sortNamaBtn) {
+  sortNamaBtn.addEventListener("click", () => {
+    if (currentSort.field === "nama") {
+      currentSort.direction = currentSort.direction === "asc" ? "desc" : "asc";
+    } else {
+      currentSort.field = "nama";
+      currentSort.direction = "asc";
+    }
+
+    applyFilters(true);
+  });
+}
+
+if (sortTanggalBtn) {
+  sortTanggalBtn.addEventListener("click", () => {
+    if (currentSort.field === "tanggal") {
+      currentSort.direction = currentSort.direction === "desc" ? "asc" : "desc";
+    } else {
+      currentSort.field = "tanggal";
+      currentSort.direction = "desc";
+    }
+
+    applyFilters(true);
+  });
+}
+
+if (prevPageBtn) {
+  prevPageBtn.addEventListener("click", () => {
+    if (currentPage > 1) {
+      currentPage -= 1;
+      renderTable(getPaginatedRows());
+      updatePaginationUI();
+    }
+  });
+}
+
+if (nextPageBtn) {
+  nextPageBtn.addEventListener("click", () => {
+    const totalPages = getTotalPages();
+    if (currentPage < totalPages) {
+      currentPage += 1;
+      renderTable(getPaginatedRows());
+      updatePaginationUI();
+    }
   });
 }
 
@@ -327,6 +506,7 @@ supabaseClient.auth.onAuthStateChange((event) => {
 
     guestRows = [];
     filteredGuestRows = [];
+    currentPage = 1;
 
     if (guestTableBody) {
       guestTableBody.innerHTML = `
@@ -335,6 +515,9 @@ supabaseClient.auth.onAuthStateChange((event) => {
         </tr>
       `;
     }
+
+    updatePaginationUI();
+    updateSortUI();
   }
 
   if (event === "SIGNED_IN") {
@@ -385,4 +568,6 @@ if (exportBtn) {
   });
 }
 
+updateSortUI();
+updatePaginationUI();
 checkSession();
