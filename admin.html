@@ -24,7 +24,7 @@
 
     .admin-shell {
       width: 100%;
-      max-width: 1280px;
+      max-width: 1380px;
       margin-top: 24px;
     }
 
@@ -119,7 +119,10 @@
     }
 
     .ghost-btn,
-    .page-btn {
+    .page-btn,
+    .primary-btn,
+    .danger-btn,
+    .secondary-btn {
       border: 0;
       border-radius: 12px;
       padding: 10px 14px;
@@ -131,6 +134,21 @@
     .ghost-btn {
       background: white;
       color: var(--primary-dark);
+    }
+
+    .primary-btn {
+      background: #2563eb;
+      color: white;
+    }
+
+    .secondary-btn {
+      background: #e5efff;
+      color: var(--primary-dark);
+    }
+
+    .danger-btn {
+      background: #dc2626;
+      color: white;
     }
 
     .page-btn {
@@ -146,6 +164,41 @@
 
     .admin-content {
       padding: 24px;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .stat-card {
+      background: linear-gradient(180deg, #ffffff, #f8fbff);
+      border: 1px solid #dbeafe;
+      border-radius: 20px;
+      padding: 18px;
+      box-shadow: 0 12px 24px rgba(15, 23, 42, 0.06);
+    }
+
+    .stat-label {
+      font-size: 0.9rem;
+      color: var(--muted);
+      margin-bottom: 8px;
+      font-weight: 600;
+    }
+
+    .stat-value {
+      font-size: 1.9rem;
+      font-weight: 800;
+      color: var(--primary-dark);
+      line-height: 1.1;
+    }
+
+    .stat-note {
+      margin-top: 8px;
+      font-size: 0.84rem;
+      color: var(--muted);
     }
 
     .toolbar {
@@ -188,7 +241,7 @@
     table {
       width: 100%;
       border-collapse: collapse;
-      min-width: 1100px;
+      min-width: 1250px;
       background: transparent;
     }
 
@@ -234,15 +287,29 @@
       color: var(--muted);
     }
 
-    .small-btn {
+    .action-group {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .small-btn,
+    .edit-btn {
       border: 0;
       border-radius: 10px;
       padding: 8px 10px;
       font: inherit;
       font-weight: 600;
       cursor: pointer;
-      background: #ef4444;
       color: white;
+    }
+
+    .small-btn {
+      background: #ef4444;
+    }
+
+    .edit-btn {
+      background: #2563eb;
     }
 
     .pagination-bar {
@@ -271,6 +338,103 @@
       margin-top: 16px;
     }
 
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.55);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+      z-index: 9999;
+    }
+
+    .modal-backdrop.show {
+      display: flex;
+    }
+
+    .modal-card {
+      width: 100%;
+      max-width: 720px;
+      max-height: 90vh;
+      overflow-y: auto;
+      background: white;
+      border-radius: 24px;
+      box-shadow: 0 24px 60px rgba(15, 23, 42, 0.28);
+      padding: 24px;
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .modal-header h2 {
+      margin: 0;
+      color: var(--primary-dark);
+      font-size: 1.3rem;
+    }
+
+    .modal-close {
+      border: none;
+      background: #eef2ff;
+      color: var(--primary-dark);
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      cursor: pointer;
+      font-size: 1.1rem;
+      font-weight: 700;
+    }
+
+    .modal-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .modal-grid .full-width {
+      grid-column: 1 / -1;
+    }
+
+    .modal-card label {
+      display: block;
+      margin-bottom: 6px;
+      font-weight: 600;
+      color: var(--primary-dark);
+    }
+
+    .modal-card input,
+    .modal-card select {
+      width: 100%;
+      padding: 11px 12px;
+      border-radius: 12px;
+      border: 1px solid #d1d5db;
+      font: inherit;
+      box-sizing: border-box;
+    }
+
+    .modal-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+      margin-top: 20px;
+      flex-wrap: wrap;
+    }
+
+    .modal-message {
+      margin-top: 14px;
+    }
+
+    @media (max-width: 1024px) {
+      .stats-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
     @media (max-width: 900px) {
       .admin-topbar {
         flex-direction: column;
@@ -281,6 +445,35 @@
       .pagination-bar {
         flex-direction: column;
         align-items: flex-start;
+      }
+
+      .modal-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .stats-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media print {
+      body * {
+        visibility: hidden;
+      }
+
+      #printArea,
+      #printArea * {
+        visibility: visible;
+      }
+
+      #printArea {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        background: white;
       }
     }
   </style>
@@ -333,7 +526,33 @@
           </div>
         </div>
 
-        <div class="admin-content">
+        <div class="admin-content" id="printArea">
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-label">Total Data (sesuai filter)</div>
+              <div id="statTotal" class="stat-value">0</div>
+              <div class="stat-note">Jumlah seluruh data setelah filter aktif</div>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-label">Tamu Hari Ini</div>
+              <div id="statToday" class="stat-value">0</div>
+              <div class="stat-note">Berdasarkan tanggal kunjungan</div>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-label">Tamu Bulan Ini</div>
+              <div id="statMonth" class="stat-value">0</div>
+              <div class="stat-note">Total kunjungan bulan berjalan</div>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-label">Keperluan Terbanyak</div>
+              <div id="statTopPurpose" class="stat-value" style="font-size:1.2rem;">-</div>
+              <div id="statTopPurposeCount" class="stat-note">Belum ada data</div>
+            </div>
+          </div>
+
           <div class="toolbar">
             <input type="text" id="searchInput" placeholder="Cari nama, instansi, tujuan..." />
             <input type="date" id="filterTanggal" />
@@ -354,11 +573,13 @@
 
             <button id="refreshBtn" class="ghost-btn" type="button">Refresh</button>
             <button id="exportBtn" class="ghost-btn" type="button">Export Excel</button>
+            <button id="exportPdfBtn" class="ghost-btn" type="button">Export PDF</button>
+            <button id="printBtn" class="ghost-btn" type="button">Print</button>
             <button id="resetFilterBtn" class="ghost-btn" type="button">Reset Filter</button>
           </div>
 
           <div class="table-wrap">
-            <table>
+            <table id="guestTable">
               <thead>
                 <tr>
                   <th>No</th>
@@ -405,8 +626,77 @@
     </div>
   </main>
 
+  <div id="editModal" class="modal-backdrop" aria-hidden="true">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2>Edit Data Tamu</h2>
+        <button type="button" id="closeEditModalBtn" class="modal-close">×</button>
+      </div>
+
+      <form id="editGuestForm">
+        <input type="hidden" id="editGuestId" />
+
+        <div class="modal-grid">
+          <div>
+            <label for="editNamaLengkap">Nama Lengkap</label>
+            <input type="text" id="editNamaLengkap" required />
+          </div>
+
+          <div>
+            <label for="editInstansi">Instansi</label>
+            <input type="text" id="editInstansi" />
+          </div>
+
+          <div>
+            <label for="editNoHp">No HP</label>
+            <input type="text" id="editNoHp" />
+          </div>
+
+          <div>
+            <label for="editEmail">Email</label>
+            <input type="email" id="editEmail" />
+          </div>
+
+          <div>
+            <label for="editTujuan">Tujuan / PIC</label>
+            <input type="text" id="editTujuan" />
+          </div>
+
+          <div>
+            <label for="editKeperluan">Keperluan</label>
+            <select id="editKeperluan">
+              <option value="">Pilih Keperluan</option>
+              <option value="Audiensi">Audiensi</option>
+              <option value="Koordinasi">Koordinasi</option>
+              <option value="Konsultasi">Konsultasi</option>
+              <option value="Kegiatan Praktikum / Magang">Kegiatan Praktikum / Magang</option>
+              <option value="Peminjaman / Pengembalian Arsip">Peminjaman / Pengembalian Arsip</option>
+              <option value="Pemanfaatan Coworking Space">Pemanfaatan Coworking Space</option>
+              <option value="Silaturahmi">Silaturahmi</option>
+              <option value="Lainnya">Lainnya</option>
+            </select>
+          </div>
+
+          <div class="full-width">
+            <label for="editTanggalKunjungan">Tanggal Kunjungan</label>
+            <input type="date" id="editTanggalKunjungan" />
+          </div>
+        </div>
+
+        <p id="editMessage" class="form-message modal-message" aria-live="polite"></p>
+
+        <div class="modal-footer">
+          <button type="button" id="cancelEditBtn" class="secondary-btn">Batal</button>
+          <button type="submit" id="saveEditBtn" class="primary-btn">Simpan Perubahan</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
   <script src="admin.js"></script>
 </body>
 </html>
